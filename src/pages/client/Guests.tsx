@@ -1,0 +1,165 @@
+import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import { CheckCircle2, Clock, XCircle, Users, Search } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+
+type Guest = {
+  id: string;
+  name: string;
+  status: 'pending' | 'confirmed' | 'declined';
+  companions: number;
+  dietary: string | null;
+  special_needs: string | null;
+  confirmed_at: string | null;
+};
+
+const card: React.CSSProperties = {
+  background: '#FDFAF6',
+  border: '1px solid rgba(184,150,90,0.2)',
+  borderRadius: '10px',
+};
+
+const statusConfig = {
+  confirmed: { label: 'Confirmado', bg: 'rgba(34,197,94,0.1)',  color: '#16a34a', icon: CheckCircle2 },
+  pending:   { label: 'Pendente',   bg: 'rgba(184,150,90,0.1)', color: '#B8965A', icon: Clock },
+  declined:  { label: 'Recusado',   bg: 'rgba(239,68,68,0.1)',  color: '#dc2626', icon: XCircle },
+};
+
+export default function ClientGuests() {
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'pending' | 'declined'>('all');
+
+  useEffect(() => {
+    const fetchGuests = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) { setLoading(false); return; }
+
+      const { data: evento } = await supabase
+        .from('eventos')
+        .select('id')
+        .eq('cliente_email', user.email)
+        .single();
+
+      if (!evento) { setLoading(false); return; }
+
+      const { data } = await supabase
+        .from('guests')
+        .select('id, name, status, companions, dietary, special_needs, confirmed_at')
+        .eq('event_id', evento.id)
+        .order('name', { ascending: true });
+
+      setGuests(data || []);
+      setLoading(false);
+    };
+
+    fetchGuests();
+  }, []);
+
+  const confirmed = guests.filter(g => g.status === 'confirmed').length;
+  const pending = guests.filter(g => g.status === 'pending').length;
+  const declined = guests.filter(g => g.status === 'declined').length;
+  const totalWithCompanions = guests.reduce((s, g) => s + 1 + g.companions, 0);
+
+  const filtered = guests.filter(g => {
+    const matchSearch = g.name.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' || g.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#F5EFE6' }}>
+      <div style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid rgba(184,150,90,0.2)', borderTop: '2px solid #B8965A', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: '#5C1A2E', fontWeight: 400, marginBottom: '4px' }}>Convidados</h1>
+        <p style={{ fontSize: '13px', opacity: 0.5 }}>Acompanhe as confirmações do seu evento</p>
+      </div>
+
+      {/* Métricas */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+        {[
+          { label: 'Total (+ acomp.)', value: totalWithCompanions, color: '#230606', icon: Users },
+          { label: 'Confirmados', value: confirmed, color: '#16a34a', icon: CheckCircle2 },
+          { label: 'Pendentes', value: pending, color: '#B8965A', icon: Clock },
+          { label: 'Recusados', value: declined, color: '#dc2626', icon: XCircle },
+        ].map((m, i) => {
+          const Icon = m.icon;
+          return (
+            <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+              style={{ ...card, padding: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Icon size={14} style={{ color: m.color }} />
+                <p style={{ fontSize: '11px', opacity: 0.5 }}>{m.label}</p>
+              </div>
+              <p style={{ fontSize: '26px', fontFamily: 'Playfair Display, serif', fontWeight: 400, color: m.color }}>{m.value}</p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Busca e filtros */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#FDFAF6', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '8px', padding: '8px 14px', flex: 1, minWidth: '200px' }}>
+          <Search size={14} style={{ opacity: 0.4 }} />
+          <input type="text" placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)}
+            style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '13px', color: '#230606', width: '100%' }} />
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {(['all', 'confirmed', 'pending', 'declined'] as const).map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(184,150,90,0.25)', background: statusFilter === s ? '#B8965A' : 'transparent', color: '#230606', opacity: statusFilter === s ? 1 : 0.6 }}>
+              {{ all: 'Todos', confirmed: 'Confirmados', pending: 'Pendentes', declined: 'Recusados' }[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Lista */}
+      <div style={{ ...card, overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(184,150,90,0.15)', display: 'flex', justifyContent: 'space-between' }}>
+          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: '#5C1A2E', fontWeight: 400 }}>Lista de Convidados</h2>
+          <p style={{ fontSize: '12px', opacity: 0.4 }}>{filtered.length} convidado{filtered.length !== 1 ? 's' : ''}</p>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ padding: '48px', textAlign: 'center' }}>
+            <Users size={40} style={{ margin: '0 auto 12px', opacity: 0.2 }} />
+            <p style={{ fontSize: '13px', opacity: 0.4 }}>
+              {guests.length === 0 ? 'A lista de convidados será adicionada em breve' : 'Nenhum convidado encontrado'}
+            </p>
+          </div>
+        ) : filtered.map((guest, i) => {
+          const cfg = statusConfig[guest.status];
+          const Icon = cfg.icon;
+          const initials = guest.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+          return (
+            <div key={guest.id} style={{ padding: '14px 20px', borderBottom: i < filtered.length - 1 ? '1px solid rgba(184,150,90,0.08)' : 'none', display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(184,150,90,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: '12px', color: '#B8965A', fontWeight: 500 }}>{initials}</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '14px', color: '#230606', marginBottom: '2px' }}>{guest.name}</p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {guest.companions > 0 && <p style={{ fontSize: '12px', opacity: 0.5 }}>+{guest.companions} acomp.</p>}
+                  {guest.dietary && <p style={{ fontSize: '12px', opacity: 0.5 }}>🍽 {guest.dietary}</p>}
+                  {guest.special_needs && <p style={{ fontSize: '12px', opacity: 0.5 }}>♿ {guest.special_needs}</p>}
+                </div>
+              </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: cfg.bg, color: cfg.color, flexShrink: 0 }}>
+                <Icon size={11} /> {cfg.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
