@@ -125,11 +125,15 @@ export default function AdminEventDetail() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
-  const [finTab, setFinTab] = useState<'setores' | 'planilha' | 'extras' | 'comprovantes'>('setores');
+  const [finTab, setFinTab] = useState<'setores' | 'planilha' | 'extras' | 'comprovantes' | 'setores_auto'>('planilha');
   const [showNewSector, setShowNewSector] = useState(false);
   const [newSector, setNewSector] = useState({ name: '', value: '', due_date: '', notes: '' });
+  const [comprovantesSetor, setComprovantesSetor] = useState<any[]>([]);
+  const [uploadingSetor, setUploadingSetor] = useState<string | null>(null);
+  const [pagandoItem, setPagandoItem] = useState<string | null>(null);
+  const [expandedSetorAuto, setExpandedSetorAuto] = useState<string | null>(null);
   const [showNewItem, setShowNewItem] = useState(false);
-  const [newItem, setNewItem] = useState({ sector_id: '', description: '', quantity: '1', unit_price: '' });
+  const [newItem, setNewItem] = useState({ sector_id: '', description: '', quantity: '1', unit_price: '', pagamento_tipo: 'avista', parcelas_total: '1' });
   const [showNewExtra, setShowNewExtra] = useState(false);
   const [newExtra, setNewExtra] = useState({ description: '', quantity: '1', unit_price: '' });
 
@@ -171,18 +175,50 @@ export default function AdminEventDetail() {
     const { data } = await supabase.from('messages').select('*').eq('client_email', form.cliente_email).order('created_at', { ascending: true });
     setMessages(data || []);
   };
+  const pagarParcela = async (item: any) => {
+    if (item.parcelas_pagas >= item.parcelas_total) return;
+    setPagandoItem(item.id);
+    const novasPagas = item.parcelas_pagas + 1;
+    await supabase.from('event_items').update({ parcelas_pagas: novasPagas }).eq('id', item.id);
+    setItems(prev => prev.map((i: any) => i.id === item.id ? { ...i, parcelas_pagas: novasPagas } : i));
+    setPagandoItem(null);
+  };
+
+  const desfazerPagamento = async (item: any) => {
+    if (item.parcelas_pagas <= 0) return;
+    const novasPagas = item.parcelas_pagas - 1;
+    await supabase.from('event_items').update({ parcelas_pagas: novasPagas }).eq('id', item.id);
+    setItems(prev => prev.map((i: any) => i.id === item.id ? { ...i, parcelas_pagas: novasPagas } : i));
+  };
+
+  const handleUploadComprovanteSetor = async (e: React.ChangeEvent<HTMLInputElement>, setorNome: string) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setUploadingSetor(setorNome);
+    const ext = file.name.split('.').pop();
+    const fileName = `${id}-${setorNome.replace(/\s+/g, '_').toLowerCase()}-${Date.now()}.${ext}`;
+    await supabase.storage.from('receipts').upload(fileName, file, { upsert: true });
+    const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(fileName);
+    const { data } = await supabase.from('comprovantes_setor').insert({ event_id: id, setor_nome: setorNome, name: fileName, file_url: urlData.publicUrl }).select().single();
+    if (data) setComprovantesSetor((prev: any[]) => [data, ...prev]);
+    setUploadingSetor(null);
+    e.target.value = '';
+  };
+
   const fetchFinanceiro = async () => {
     if (!id) return;
-    const [sectorsRes, itemsRes, extrasRes, receiptsRes] = await Promise.all([
+    const [sectorsRes, itemsRes, extrasRes, receiptsRes, comprovantesRes] = await Promise.all([
       supabase.from('event_sectors').select('*').eq('event_id', id).order('created_at'),
-      supabase.from('event_items').select('*').eq('event_id', id).order('created_at'),
+      supabase.from('event_items').select('*, event_sectors(name)').eq('event_id', id).order('created_at'),
       supabase.from('event_extras').select('*').eq('event_id', id).order('created_at'),
       supabase.from('payment_receipts').select('*').eq('event_id', id).order('created_at', { ascending: false }),
+      supabase.from('comprovantes_setor').select('*').eq('event_id', id).order('created_at', { ascending: false }),
     ]);
     setSectors(sectorsRes.data || []);
-    setItems(itemsRes.data || []);
+    setItems((itemsRes.data || []).map((i: any) => ({ ...i, pagamento_tipo: i.pagamento_tipo || 'avista', parcelas_total: i.parcelas_total || 1, parcelas_pagas: i.parcelas_pagas || 0, setor_nome: i.event_sectors?.name || 'Sem setor' })));
     setExtras(extrasRes.data || []);
     setReceipts(receiptsRes.data || []);
+    setComprovantesSetor(comprovantesRes.data || []);
   };
   const fetchEventPhotos = async () => {
     if (!id) return;
@@ -329,7 +365,7 @@ export default function AdminEventDetail() {
   };
 
   const copyGalleryLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/dashboard/evento/${id}`);
+    navigator.clipboard.writeText(`${window.location.origin}/evento/${id}`);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
@@ -359,9 +395,21 @@ export default function AdminEventDetail() {
   };
   const addItem = async () => {
     if (!newItem.description || !id) return;
-    const { data } = await supabase.from('event_items').insert({ event_id: id, sector_id: newItem.sector_id || null, description: newItem.description, quantity: Number(newItem.quantity) || 1, unit_price: Number(newItem.unit_price) || 0 }).select().single();
+    // Buscar ou criar setor pelo nome
+    let finalSectorId: string | null = null;
+    if (newItem.sector_id) {
+      const sectorExistente = sectors.find(s => s.name === newItem.sector_id || s.id === newItem.sector_id);
+      if (sectorExistente) {
+        finalSectorId = sectorExistente.id;
+      } else {
+        // Criar novo setor automaticamente
+        const { data: novoSetor } = await supabase.from('event_sectors').insert({ event_id: id, name: newItem.sector_id, value: 0, status: 'pending' }).select().single();
+        if (novoSetor) { setSectors(prev => [...prev, novoSetor]); finalSectorId = novoSetor.id; }
+      }
+    }
+    const { data } = await supabase.from('event_items').insert({ event_id: id, sector_id: finalSectorId, description: newItem.description, quantity: Number(newItem.quantity) || 1, unit_price: Number(newItem.unit_price) || 0, total: (Number(newItem.quantity) || 1) * (Number(newItem.unit_price) || 0), pagamento_tipo: newItem.pagamento_tipo, parcelas_total: Number(newItem.parcelas_total) || 1, parcelas_pagas: 0 }).select().single();
     if (data) setItems(prev => [...prev, data]);
-    setNewItem({ sector_id: '', description: '', quantity: '1', unit_price: '' });
+    setNewItem({ sector_id: '', description: '', quantity: '1', unit_price: '', pagamento_tipo: 'avista', parcelas_total: '1' });
     setShowNewItem(false);
   };
   const deleteItem = async (itemId: string) => {
@@ -710,9 +758,9 @@ export default function AdminEventDetail() {
             </div>
 
             <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', background: 'rgba(184,150,90,0.06)', borderRadius: '20px', padding: '4px', width: 'fit-content' }}>
-              {(['setores', 'planilha', 'extras', 'comprovantes'] as const).map(t => (
+              {(['planilha', 'setores_auto', 'setores', 'extras', 'comprovantes'] as const).map(t => (
                 <button key={t} style={{ ...tabStyle(finTab === t), fontSize: '12px', padding: '6px 14px' }} onClick={() => setFinTab(t)}>
-                  {{ setores: 'Setores', planilha: 'Planilha', extras: 'Extras', comprovantes: 'Comprovantes' }[t]}
+                  {{ planilha: 'Planilha', setores_auto: 'Por Setor', setores: 'Setores (manual)', extras: 'Extras', comprovantes: 'Comprovantes' }[t]}
                 </button>
               ))}
             </div>
@@ -792,22 +840,52 @@ export default function AdminEventDetail() {
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead><tr style={{ borderBottom: '1px solid rgba(184,150,90,0.1)' }}>
-                      {['Descrição', 'Setor', 'Qtd', 'Valor Unit.', 'Total', ''].map(h => (
+                      {['Descrição', 'Setor', 'Qtd', 'Valor Unit.', 'Total', 'Pagamento', 'Status', ''].map(h => (
                         <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', opacity: 0.4, fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
-                      {items.length === 0 && <tr><td colSpan={6} style={{ padding: '28px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum item cadastrado</td></tr>}
-                      {items.map(item => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(184,150,90,0.07)' }}>
-                          <td style={{ padding: '11px 16px', fontSize: '13px' }}>{item.description}</td>
-                          <td style={{ padding: '11px 16px', fontSize: '12px', opacity: 0.5 }}>{sectors.find(s => s.id === item.sector_id)?.name || '—'}</td>
-                          <td style={{ padding: '11px 16px', fontSize: '13px' }}>{item.quantity}</td>
-                          <td style={{ padding: '11px 16px', fontSize: '13px' }}>{fmt(item.unit_price)}</td>
-                          <td style={{ padding: '11px 16px', fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(item.total)}</td>
-                          <td style={{ padding: '11px 16px' }}><button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#dc2626' }}><Trash2 size={13} /></button></td>
-                        </tr>
-                      ))}
+                      {items.length === 0 && <tr><td colSpan={8} style={{ padding: '28px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum item cadastrado</td></tr>}
+                      {items.map((item: any) => {
+                        const parcTotal = item.parcelas_total || 1;
+                        const parcPagas = item.parcelas_pagas || 0;
+                        const valorParcela = item.total / parcTotal;
+                        const isPago = parcPagas >= parcTotal;
+                        const pct = Math.round((parcPagas / parcTotal) * 100);
+                        return (
+                          <tr key={item.id} style={{ borderBottom: '1px solid rgba(184,150,90,0.07)' }}>
+                            <td style={{ padding: '11px 16px', fontSize: '13px' }}>{item.description}</td>
+                            <td style={{ padding: '11px 16px', fontSize: '12px', opacity: 0.5 }}>{(item as any).setor_nome || sectors.find(s => s.id === item.sector_id)?.name || '—'}</td>
+                            <td style={{ padding: '11px 16px', fontSize: '13px' }}>{item.quantity}</td>
+                            <td style={{ padding: '11px 16px', fontSize: '13px' }}>{fmt(item.unit_price)}</td>
+                            <td style={{ padding: '11px 16px', fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(item.total)}</td>
+                            <td style={{ padding: '11px 16px' }}>
+                              {item.pagamento_tipo === 'parcelado' ? (
+                                <div>
+                                  <p style={{ fontSize: '11px' }}>{parcPagas}/{parcTotal}x · {fmt(valorParcela)}</p>
+                                  <div style={{ height: '3px', background: 'rgba(184,150,90,0.15)', borderRadius: '99px', width: '60px', marginTop: '3px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${pct}%`, background: isPago ? '#16a34a' : '#B8965A', borderRadius: '99px' }} />
+                                  </div>
+                                </div>
+                              ) : <span style={{ fontSize: '11px', opacity: 0.5 }}>À vista</span>}
+                            </td>
+                            <td style={{ padding: '11px 16px' }}>
+                              {isPago ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <span style={{ fontSize: '11px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '3px' }}><CheckCircle2 size={12} /> Pago</span>
+                                  <button onClick={() => desfazerPagamento(item)} title="Desfazer" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, fontSize: '10px', color: '#dc2626' }}>↩</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => pagarParcela(item)} disabled={pagandoItem === item.id}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 500 }}>
+                                  {item.pagamento_tipo === 'parcelado' ? `Pagar ${parcPagas + 1}/${parcTotal}` : 'Pagar'}
+                                </button>
+                              )}
+                            </td>
+                            <td style={{ padding: '11px 16px' }}><button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#dc2626' }}><Trash2 size={13} /></button></td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -815,9 +893,31 @@ export default function AdminEventDetail() {
                   <div style={{ ...card, padding: '18px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                       <div><label style={labelStyle}>Descrição</label><input style={inputSmall} placeholder="Ex: Bolo 4 andares" value={newItem.description} onChange={e => setNewItem({ ...newItem, description: e.target.value })} /></div>
-                      <div><label style={labelStyle}>Setor</label><select style={inputSmall} value={newItem.sector_id} onChange={e => setNewItem({ ...newItem, sector_id: e.target.value })}><option value="">Sem setor</option>{sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                      <div>
+                        <label style={labelStyle}>Setor</label>
+                        <input list="setores-list" style={inputSmall} placeholder="Ex: Buffet, Flores..." value={newItem.sector_id} onChange={e => setNewItem({ ...newItem, sector_id: e.target.value })} />
+                        <datalist id="setores-list">
+                          {sectors.map(s => <option key={s.id} value={s.name} />)}
+                          {[...new Set((items as any[]).map((i: any) => i.setor_nome).filter(Boolean))].map((nome: string) => <option key={nome} value={nome} />)}
+                        </datalist>
+                      </div>
                       <div><label style={labelStyle}>Qtd</label><input type="number" style={inputSmall} value={newItem.quantity} onChange={e => setNewItem({ ...newItem, quantity: e.target.value })} /></div>
                       <div><label style={labelStyle}>Valor Unit. (R$)</label><input type="number" style={inputSmall} placeholder="0" value={newItem.unit_price} onChange={e => setNewItem({ ...newItem, unit_price: e.target.value })} /></div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                      <div>
+                        <label style={labelStyle}>Forma de pagamento</label>
+                        <select style={inputSmall} value={newItem.pagamento_tipo} onChange={e => setNewItem({ ...newItem, pagamento_tipo: e.target.value })}>
+                          <option value="avista">À vista</option>
+                          <option value="parcelado">Parcelado</option>
+                        </select>
+                      </div>
+                      {newItem.pagamento_tipo === 'parcelado' && (
+                        <div>
+                          <label style={labelStyle}>Número de parcelas</label>
+                          <input type="number" min="2" max="24" style={inputSmall} placeholder="Ex: 5" value={newItem.parcelas_total} onChange={e => setNewItem({ ...newItem, parcelas_total: e.target.value })} />
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={addItem} style={{ padding: '8px 18px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>Adicionar</button>
@@ -831,6 +931,84 @@ export default function AdminEventDetail() {
                 )}
               </div>
             )}
+
+            {finTab === 'setores_auto' && (() => {
+              // Agrupar itens por setor automaticamente
+              const itensComSetor = items.map((i: any) => ({ ...i, setor_nome: (i as any).setor_nome || sectors.find(s => s.id === i.sector_id)?.name || 'Sem setor' }));
+              const extrasAprovados = extras.filter(e => e.approved).map(e => ({ ...e, setor_nome: 'Extras Aprovados', pagamento_tipo: 'avista', parcelas_total: 1, parcelas_pagas: 0 }));
+              const todos = [...itensComSetor, ...extrasAprovados];
+              const setoresAutoMap: Record<string, { nome: string; items: any[]; total: number; pago: number }> = {};
+              todos.forEach((item: any) => {
+                const nome = item.setor_nome;
+                if (!setoresAutoMap[nome]) setoresAutoMap[nome] = { nome, items: [], total: 0, pago: 0 };
+                setoresAutoMap[nome].items.push(item);
+                setoresAutoMap[nome].total += item.total;
+                setoresAutoMap[nome].pago += (item.total / (item.parcelas_total || 1)) * (item.parcelas_pagas || 0);
+              });
+              const setoresAuto = Object.values(setoresAutoMap);
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {setoresAuto.length === 0 ? (
+                    <div style={{ ...card, padding: '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Adicione itens na planilha para gerar os setores</div>
+                  ) : setoresAuto.map(setor => {
+                    const pct = setor.total > 0 ? Math.round((setor.pago / setor.total) * 100) : 0;
+                    const isExp = expandedSetorAuto === setor.nome;
+                    const comprovantesDoSetor = comprovantesSetor.filter((c: any) => c.setor_nome === setor.nome);
+                    return (
+                      <div key={setor.nome} style={{ ...card, overflow: 'hidden' }}>
+                        <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+                          onClick={() => setExpandedSetorAuto(isExp ? null : setor.nome)}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                              <h3 style={{ fontSize: '14px', color: '#230606', fontWeight: 400 }}>{setor.nome}</h3>
+                              <span style={{ fontSize: '11px', opacity: 0.4 }}>{setor.items.length} item{setor.items.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ height: '3px', background: 'rgba(184,150,90,0.15)', borderRadius: '99px', width: '100px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#16a34a' : '#B8965A', borderRadius: '99px' }} />
+                              </div>
+                              <span style={{ fontSize: '11px', opacity: 0.5 }}>{pct}%</span>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontSize: '15px', fontFamily: 'Playfair Display, serif' }}>{fmt(setor.total)}</p>
+                            <p style={{ fontSize: '11px', opacity: 0.5 }}>{fmt(setor.pago)} pago</p>
+                          </div>
+                          {isExp ? <ChevronUp size={14} style={{ opacity: 0.4 }} /> : <ChevronDown size={14} style={{ opacity: 0.4 }} />}
+                        </div>
+                        {isExp && (
+                          <div style={{ borderTop: '1px solid rgba(184,150,90,0.1)', background: 'rgba(184,150,90,0.02)' }}>
+                            {setor.items.map((item: any, i: number) => {
+                              const isPago = (item.parcelas_pagas || 0) >= (item.parcelas_total || 1);
+                              return (
+                                <div key={item.id} style={{ padding: '10px 20px', borderBottom: i < setor.items.length - 1 ? '1px solid rgba(184,150,90,0.06)' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <p style={{ fontSize: '13px' }}>{item.description}</p>
+                                    {item.pagamento_tipo === 'parcelado' && <p style={{ fontSize: '11px', opacity: 0.4 }}>{item.parcelas_pagas}/{item.parcelas_total} parcelas</p>}
+                                  </div>
+                                  <p style={{ fontSize: '13px', color: '#B8965A' }}>{fmt(item.total)}</p>
+                                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: isPago ? 'rgba(34,197,94,0.1)' : 'rgba(184,150,90,0.08)', color: isPago ? '#16a34a' : '#B8965A' }}>
+                                    {isPago ? 'Pago' : item.pagamento_tipo === 'parcelado' ? `${item.parcelas_pagas}/${item.parcelas_total}` : 'Pendente'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(184,150,90,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <p style={{ fontSize: '12px', opacity: 0.5 }}>{comprovantesDoSetor.length} comprovante{comprovantesDoSetor.length !== 1 ? 's' : ''}</p>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', background: 'rgba(184,150,90,0.08)', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#B8965A' }}>
+                                <Upload size={11} />
+                                {uploadingSetor === setor.nome ? 'Enviando...' : 'Comprovante'}
+                                <input type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={e => handleUploadComprovanteSetor(e, setor.nome)} />
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {finTab === 'extras' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -847,9 +1025,9 @@ export default function AdminEventDetail() {
                         <p style={{ fontSize: '11px', opacity: 0.5 }}>{extra.quantity}x · {fmt(extra.unit_price)} cada</p>
                       </div>
                       <p style={{ fontSize: '14px', fontFamily: 'Playfair Display, serif' }}>{fmt(extra.total)}</p>
-                      <button onClick={() => toggleExtraApproved(extra.id, !extra.approved)} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 500, background: extra.approved ? 'rgba(34,197,94,0.1)' : 'rgba(184,150,90,0.1)', color: extra.approved ? '#16a34a' : '#B8965A' }}>
-                        {extra.approved ? <><CheckCircle2 size={11} /> Aprovado</> : 'Aprovar'}
-                      </button>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: extra.approved ? 'rgba(34,197,94,0.1)' : 'rgba(184,150,90,0.1)', color: extra.approved ? '#16a34a' : '#B8965A' }}>
+                        {extra.approved ? <><CheckCircle2 size={11} /> Aprovado pelo cliente</> : <><Clock size={11} /> Aguardando cliente</>}
+                      </span>
                       <button onClick={() => deleteExtra(extra.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#dc2626' }}><Trash2 size={13} /></button>
                     </div>
                   ))}
