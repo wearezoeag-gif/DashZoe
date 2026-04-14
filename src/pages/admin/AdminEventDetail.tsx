@@ -125,13 +125,15 @@ export default function AdminEventDetail() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
-  const [finTab, setFinTab] = useState<'setores' | 'planilha' | 'extras' | 'comprovantes' | 'setores_auto'>('planilha');
+  const [finTab, setFinTab] = useState<'planilha' | 'extras' | 'comprovantes' | 'setores_auto'>('planilha');
   const [showNewSector, setShowNewSector] = useState(false);
   const [newSector, setNewSector] = useState({ name: '', value: '', due_date: '', notes: '' });
   const [comprovantesSetor, setComprovantesSetor] = useState<any[]>([]);
   const [uploadingSetor, setUploadingSetor] = useState<string | null>(null);
   const [pagandoItem, setPagandoItem] = useState<string | null>(null);
   const [expandedSetorAuto, setExpandedSetorAuto] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editItemData, setEditItemData] = useState<any>({});
   const [showNewItem, setShowNewItem] = useState(false);
   const [newItem, setNewItem] = useState({ sector_id: '', description: '', quantity: '1', unit_price: '', pagamento_tipo: 'avista', parcelas_total: '1' });
   const [showNewExtra, setShowNewExtra] = useState(false);
@@ -175,6 +177,25 @@ export default function AdminEventDetail() {
     const { data } = await supabase.from('messages').select('*').eq('client_email', form.cliente_email).order('created_at', { ascending: true });
     setMessages(data || []);
   };
+  const updateItem = async (itemId: string) => {
+    const d = editItemData;
+    const total = (Number(d.quantity) || 1) * (Number(d.unit_price) || 0);
+    // Buscar ou criar setor pelo nome
+    let finalSectorId: string | null = null;
+    if (d.setor_nome) {
+      const sectorExistente = sectors.find(s => s.name === d.setor_nome);
+      if (sectorExistente) {
+        finalSectorId = sectorExistente.id;
+      } else {
+        const { data: novoSetor } = await supabase.from('event_sectors').insert({ event_id: id, name: d.setor_nome, value: 0, status: 'pending' }).select().single();
+        if (novoSetor) { setSectors(prev => [...prev, novoSetor]); finalSectorId = novoSetor.id; }
+      }
+    }
+    await supabase.from('event_items').update({ description: d.description, quantity: Number(d.quantity) || 1, unit_price: Number(d.unit_price) || 0, total, sector_id: finalSectorId, pagamento_tipo: d.pagamento_tipo || 'avista', parcelas_total: Number(d.parcelas_total) || 1 }).eq('id', itemId);
+    setItems(prev => prev.map((i: any) => i.id === itemId ? { ...i, ...d, total, sector_id: finalSectorId, setor_nome: d.setor_nome } : i));
+    setEditingItem(null);
+  };
+
   const pagarParcela = async (item: any) => {
     if (item.parcelas_pagas >= item.parcelas_total) return;
     setPagandoItem(item.id);
@@ -758,78 +779,14 @@ export default function AdminEventDetail() {
             </div>
 
             <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', background: 'rgba(184,150,90,0.06)', borderRadius: '20px', padding: '4px', width: 'fit-content' }}>
-              {(['planilha', 'setores_auto', 'setores', 'extras', 'comprovantes'] as const).map(t => (
+              {(['planilha', 'setores_auto', 'extras', 'comprovantes'] as const).map(t => (
                 <button key={t} style={{ ...tabStyle(finTab === t), fontSize: '12px', padding: '6px 14px' }} onClick={() => setFinTab(t)}>
-                  {{ planilha: 'Planilha', setores_auto: 'Por Setor', setores: 'Setores (manual)', extras: 'Extras', comprovantes: 'Comprovantes' }[t]}
+                  {{ planilha: 'Planilha', setores_auto: 'Por Setor', extras: 'Extras', comprovantes: 'Comprovantes' }[t]}
                 </button>
               ))}
             </div>
 
-            {finTab === 'setores' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {sectors.map(sector => {
-                  const cfg = statusConfig[sector.status];
-                  const Icon = cfg.icon;
-                  const sectorPct = sector.value > 0 ? Math.round((sector.paid / sector.value) * 100) : 0;
-                  const isExpanded = expandedSector === sector.id;
-                  return (
-                    <div key={sector.id} style={{ background: '#FDFAF6', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
-                      <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }} onClick={() => setExpandedSector(isExpanded ? null : sector.id)}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                            <h3 style={{ fontSize: '14px', color: '#230606', fontWeight: 400 }}>{sector.name}</h3>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: cfg.bg, color: cfg.color }}><Icon size={10} /> {cfg.label}</span>
-                          </div>
-                          <div style={{ height: '3px', background: 'rgba(184,150,90,0.15)', borderRadius: '99px', overflow: 'hidden', maxWidth: '240px' }}>
-                            <div style={{ height: '100%', width: `${sectorPct}%`, background: '#B8965A', borderRadius: '99px' }} />
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <p style={{ fontSize: '16px', fontFamily: 'Playfair Display, serif', color: '#230606' }}>{fmt(sector.value)}</p>
-                          <p style={{ fontSize: '11px', opacity: 0.5 }}>{fmt(sector.paid)} pagos</p>
-                        </div>
-                        {isExpanded ? <ChevronUp size={15} style={{ opacity: 0.4 }} /> : <ChevronDown size={15} style={{ opacity: 0.4 }} />}
-                      </div>
-                      {isExpanded && (
-                        <div style={{ borderTop: '1px solid rgba(184,150,90,0.15)', padding: '16px 20px', background: 'rgba(184,150,90,0.02)' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                            <div><label style={labelStyle}>Valor pago (R$)</label><input type="number" style={inputSmall} defaultValue={sector.paid} onBlur={e => updateSectorPaid(sector.id, Number(e.target.value))} /></div>
-                            <div><label style={labelStyle}>Vencimento</label><p style={{ fontSize: '13px', opacity: 0.6, paddingTop: '4px' }}>{sector.due_date ? new Date(sector.due_date).toLocaleDateString('pt-BR') : '—'}</p></div>
-                            <div><label style={labelStyle}>Status</label>
-                              <select style={inputSmall} value={sector.status} onChange={e => updateSectorStatus(sector.id, e.target.value as Sector['status'])}>
-                                <option value="pending">Pendente</option><option value="partial">Parcial</option><option value="paid">Pago</option><option value="overdue">Vencido</option>
-                              </select>
-                            </div>
-                          </div>
-                          {sector.notes && <p style={{ fontSize: '12px', opacity: 0.5, fontStyle: 'italic', marginBottom: '10px' }}>{sector.notes}</p>}
-                          <button onClick={() => deleteSector(sector.id)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer' }}>
-                            <Trash2 size={12} /> Remover
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {showNewSector ? (
-                  <div style={{ ...card, padding: '20px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                      <div><label style={labelStyle}>Nome</label><input style={inputSmall} placeholder="Ex: Buffet, Decoração..." value={newSector.name} onChange={e => setNewSector({ ...newSector, name: e.target.value })} /></div>
-                      <div><label style={labelStyle}>Valor (R$)</label><input type="number" style={inputSmall} placeholder="0" value={newSector.value} onChange={e => setNewSector({ ...newSector, value: e.target.value })} /></div>
-                      <div><label style={labelStyle}>Vencimento</label><input type="date" style={inputSmall} value={newSector.due_date} onChange={e => setNewSector({ ...newSector, due_date: e.target.value })} /></div>
-                    </div>
-                    <div style={{ marginBottom: '12px' }}><label style={labelStyle}>Observações</label><input style={inputSmall} placeholder="Opcional..." value={newSector.notes} onChange={e => setNewSector({ ...newSector, notes: e.target.value })} /></div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={addSector} style={{ padding: '8px 18px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>Adicionar</button>
-                      <button onClick={() => setShowNewSector(false)} style={{ padding: '8px 18px', background: 'transparent', color: '#230606', border: '1px solid rgba(184,150,90,0.25)', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', opacity: 0.6 }}>Cancelar</button>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowNewSector(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px', background: 'rgba(184,150,90,0.05)', border: '1px dashed rgba(184,150,90,0.35)', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', color: '#B8965A', width: '100%', justifyContent: 'center' }}>
-                    <Plus size={14} /> Adicionar setor
-                  </button>
-                )}
-              </div>
-            )}
+            
 
             {finTab === 'planilha' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -852,10 +809,43 @@ export default function AdminEventDetail() {
                         const valorParcela = item.total / parcTotal;
                         const isPago = parcPagas >= parcTotal;
                         const pct = Math.round((parcPagas / parcTotal) * 100);
+                        const isEditing = editingItem === item.id;
+
+                        if (isEditing) {
+                          return (
+                            <tr key={item.id} style={{ borderBottom: '1px solid rgba(184,150,90,0.07)', background: 'rgba(184,150,90,0.04)' }}>
+                              <td style={{ padding: '8px 10px' }}><input style={{ ...inputSmall, fontSize: '12px' }} value={editItemData.description || ''} onChange={e => setEditItemData({ ...editItemData, description: e.target.value })} /></td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <input list="setores-edit-list" style={{ ...inputSmall, fontSize: '12px' }} value={editItemData.setor_nome || ''} onChange={e => setEditItemData({ ...editItemData, setor_nome: e.target.value })} placeholder="Setor..." />
+                                <datalist id="setores-edit-list">{sectors.map(s => <option key={s.id} value={s.name} />)}</datalist>
+                              </td>
+                              <td style={{ padding: '8px 10px' }}><input type="number" style={{ ...inputSmall, fontSize: '12px', width: '60px' }} value={editItemData.quantity || ''} onChange={e => setEditItemData({ ...editItemData, quantity: e.target.value })} /></td>
+                              <td style={{ padding: '8px 10px' }}><input type="number" style={{ ...inputSmall, fontSize: '12px', width: '80px' }} value={editItemData.unit_price || ''} onChange={e => setEditItemData({ ...editItemData, unit_price: e.target.value })} /></td>
+                              <td style={{ padding: '8px 10px', fontSize: '13px', color: '#B8965A' }}>{fmt((Number(editItemData.quantity) || 1) * (Number(editItemData.unit_price) || 0))}</td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <select style={{ ...inputSmall, fontSize: '11px' }} value={editItemData.pagamento_tipo || 'avista'} onChange={e => setEditItemData({ ...editItemData, pagamento_tipo: e.target.value })}>
+                                  <option value="avista">À vista</option>
+                                  <option value="parcelado">Parcelado</option>
+                                </select>
+                                {editItemData.pagamento_tipo === 'parcelado' && (
+                                  <input type="number" min="2" max="24" style={{ ...inputSmall, fontSize: '11px', marginTop: '4px' }} value={editItemData.parcelas_total || ''} onChange={e => setEditItemData({ ...editItemData, parcelas_total: e.target.value })} placeholder="Nº parcelas" />
+                                )}
+                              </td>
+                              <td colSpan={2} style={{ padding: '8px 10px' }}>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <button onClick={() => updateItem(item.id)} style={{ padding: '4px 10px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 500 }}>Salvar</button>
+                                  <button onClick={() => setEditingItem(null)} style={{ padding: '4px 10px', background: 'transparent', color: '#230606', border: '1px solid rgba(184,150,90,0.25)', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', opacity: 0.6 }}>Cancelar</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
                         return (
-                          <tr key={item.id} style={{ borderBottom: '1px solid rgba(184,150,90,0.07)' }}>
+                          <tr key={item.id} style={{ borderBottom: '1px solid rgba(184,150,90,0.07)' }}
+                            onDoubleClick={() => { setEditingItem(item.id); setEditItemData({ description: item.description, setor_nome: item.setor_nome, quantity: item.quantity, unit_price: item.unit_price, pagamento_tipo: item.pagamento_tipo || 'avista', parcelas_total: item.parcelas_total || 1 }); }}>
                             <td style={{ padding: '11px 16px', fontSize: '13px' }}>{item.description}</td>
-                            <td style={{ padding: '11px 16px', fontSize: '12px', opacity: 0.5 }}>{(item as any).setor_nome || sectors.find(s => s.id === item.sector_id)?.name || '—'}</td>
+                            <td style={{ padding: '11px 16px', fontSize: '12px', opacity: 0.5 }}>{item.setor_nome || sectors.find(s => s.id === item.sector_id)?.name || '—'}</td>
                             <td style={{ padding: '11px 16px', fontSize: '13px' }}>{item.quantity}</td>
                             <td style={{ padding: '11px 16px', fontSize: '13px' }}>{fmt(item.unit_price)}</td>
                             <td style={{ padding: '11px 16px', fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(item.total)}</td>
@@ -882,7 +872,13 @@ export default function AdminEventDetail() {
                                 </button>
                               )}
                             </td>
-                            <td style={{ padding: '11px 16px' }}><button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#dc2626' }}><Trash2 size={13} /></button></td>
+                            <td style={{ padding: '11px 16px' }}>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button onClick={() => { setEditingItem(item.id); setEditItemData({ description: item.description, setor_nome: item.setor_nome, quantity: item.quantity, unit_price: item.unit_price, pagamento_tipo: item.pagamento_tipo || 'avista', parcelas_total: item.parcelas_total || 1 }); }}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#B8965A' }} title="Editar">✏️</button>
+                                <button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#dc2626' }}><Trash2 size={13} /></button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
