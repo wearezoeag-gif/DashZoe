@@ -329,7 +329,7 @@ export default function AdminEventDetail() {
   };
 
   const copyGalleryLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/evento/${id}`);
+    navigator.clipboard.writeText(`${window.location.origin}/dashboard/evento/${id}`);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };

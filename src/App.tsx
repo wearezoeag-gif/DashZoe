@@ -37,7 +37,7 @@ import NotFound from './pages/NotFound';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/dashboard">
       <Routes>
         {/* Auth */}
         <Route path="/" element={<Login />} />
