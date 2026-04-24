@@ -14,6 +14,20 @@ type Evento = {
   orcamento?: number; budget?: number; status?: string; tipo?: string;
   tipo_evento_comercial?: string;
   receita_studio?: number;
+  etapa_planejamento?: boolean;
+  etapa_moodboard?: boolean;
+  etapa_orcamento?: boolean;
+  etapa_contrato?: boolean;
+  etapa_pagamento?: boolean;
+  etapa_execucao?: boolean;
+  etapa_pos_evento?: boolean;
+  etapa_planejamento?: boolean;
+  etapa_moodboard?: boolean;
+  etapa_orcamento?: boolean;
+  etapa_contrato?: boolean;
+  etapa_pagamento?: boolean;
+  etapa_execucao?: boolean;
+  etapa_pos_evento?: boolean;
 };
 
 // ─── Calculadora de precificação ──────────────────────────────────────────────
@@ -108,7 +122,7 @@ export default function AdminEventDetail() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState<Evento | null>(null);
-  const [tab, setTab] = useState<'info' | 'financeiro' | 'fotos' | 'contracts' | 'moodboard' | 'messages'>('info');
+  const [tab, setTab] = useState<'info' | 'financeiro' | 'fotos' | 'arquivos' | 'contracts' | 'moodboard' | 'messages'>('info');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
@@ -145,6 +159,8 @@ export default function AdminEventDetail() {
   // Fotos do evento
   const [eventPhotos, setEventPhotos] = useState<EventPhoto[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [arquivos, setArquivos] = useState<any[]>([]);
+  const [uploadingArquivos, setUploadingArquivos] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<number | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
@@ -191,8 +207,18 @@ export default function AdminEventDetail() {
         if (novoSetor) { setSectors(prev => [...prev, novoSetor]); finalSectorId = novoSetor.id; }
       }
     }
-    await supabase.from('event_items').update({ description: d.description, quantity: Number(d.quantity) || 1, unit_price: Number(d.unit_price) || 0, total, sector_id: finalSectorId, pagamento_tipo: d.pagamento_tipo || 'avista', parcelas_total: Number(d.parcelas_total) || 1 }).eq('id', itemId);
-    setItems(prev => prev.map((i: any) => i.id === itemId ? { ...i, ...d, total, sector_id: finalSectorId, setor_nome: d.setor_nome } : i));
+    // total é coluna gerada pelo banco (quantity * unit_price), não pode ser enviada no update
+    const { error } = await supabase.from('event_items').update({ 
+      description: d.description, 
+      quantity: Number(d.quantity) || 1, 
+      unit_price: Number(d.unit_price) || 0, 
+      sector_id: finalSectorId, 
+      pagamento_tipo: d.pagamento_tipo || 'avista', 
+      parcelas_total: Number(d.parcelas_total) || 1 
+    }).eq('id', itemId);
+    if (!error) {
+      setItems(prev => prev.map((i: any) => i.id === itemId ? { ...i, ...d, total, sector_id: finalSectorId, setor_nome: d.setor_nome } : i));
+    }
     setEditingItem(null);
   };
 
@@ -241,6 +267,32 @@ export default function AdminEventDetail() {
     setReceipts(receiptsRes.data || []);
     setComprovantesSetor(comprovantesRes.data || []);
   };
+  const fetchArquivos = async () => {
+    if (!id) return;
+    const { data } = await supabase.from('arquivos').select('*').eq('event_id', id).order('created_at', { ascending: false });
+    setArquivos(data || []);
+  };
+
+  const handleUploadArquivos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !id) return;
+    setUploadingArquivos(true);
+    for (const file of Array.from(files)) {
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { error } = await supabase.storage.from('arquivos').upload(fileName, file, { upsert: true });
+      if (error) { console.error(error); continue; }
+      const { data: urlData } = supabase.storage.from('arquivos').getPublicUrl(fileName);
+      await supabase.from('arquivos').insert({ event_id: id, name: file.name, file_url: urlData.publicUrl, size: `${(file.size / 1024 / 1024).toFixed(2)} MB` });
+    }
+    setUploadingArquivos(false);
+    fetchArquivos();
+  };
+
+  const deleteArquivo = async (arquivoId: string) => {
+    await supabase.from('arquivos').delete().eq('id', arquivoId);
+    setArquivos(prev => prev.filter((a: any) => a.id !== arquivoId));
+  };
+
   const fetchEventPhotos = async () => {
     if (!id) return;
     const { data } = await supabase.from('photos').select('*').eq('event_id', id).order('created_at', { ascending: true });
@@ -253,6 +305,7 @@ export default function AdminEventDetail() {
     if (tab === 'messages') fetchMessages();
     if (tab === 'financeiro') fetchFinanceiro();
     if (tab === 'fotos') fetchEventPhotos();
+    if (tab === 'arquivos') fetchArquivos();
   }, [tab, form]);
 
   // ── Salvar evento ──
@@ -265,6 +318,20 @@ export default function AdminEventDetail() {
       orcamento: form.orcamento, budget: form.budget, status: form.status, tipo: form.tipo,
       tipo_evento_comercial: form.tipo_evento_comercial,
       receita_studio: form.receita_studio,
+      etapa_planejamento: form.etapa_planejamento || false,
+      etapa_moodboard: form.etapa_moodboard || false,
+      etapa_orcamento: form.etapa_orcamento || false,
+      etapa_contrato: form.etapa_contrato || false,
+      etapa_pagamento: form.etapa_pagamento || false,
+      etapa_execucao: form.etapa_execucao || false,
+      etapa_pos_evento: form.etapa_pos_evento || false,
+      etapa_planejamento: form.etapa_planejamento || false,
+      etapa_moodboard: form.etapa_moodboard || false,
+      etapa_orcamento: form.etapa_orcamento || false,
+      etapa_contrato: form.etapa_contrato || false,
+      etapa_pagamento: form.etapa_pagamento || false,
+      etapa_execucao: form.etapa_execucao || false,
+      etapa_pos_evento: form.etapa_pos_evento || false,
     }).eq('id', id);
     setSaving(false);
     setSavedOk(true);
@@ -428,7 +495,8 @@ export default function AdminEventDetail() {
         if (novoSetor) { setSectors(prev => [...prev, novoSetor]); finalSectorId = novoSetor.id; }
       }
     }
-    const { data } = await supabase.from('event_items').insert({ event_id: id, sector_id: finalSectorId, description: newItem.description, quantity: Number(newItem.quantity) || 1, unit_price: Number(newItem.unit_price) || 0, total: (Number(newItem.quantity) || 1) * (Number(newItem.unit_price) || 0), pagamento_tipo: newItem.pagamento_tipo, parcelas_total: Number(newItem.parcelas_total) || 1, parcelas_pagas: 0 }).select().single();
+    // total é coluna gerada pelo banco, não precisa enviar
+    const { data } = await supabase.from('event_items').insert({ event_id: id, sector_id: finalSectorId, description: newItem.description, quantity: Number(newItem.quantity) || 1, unit_price: Number(newItem.unit_price) || 0, pagamento_tipo: newItem.pagamento_tipo, parcelas_total: Number(newItem.parcelas_total) || 1, parcelas_pagas: 0 }).select().single();
     if (data) setItems(prev => [...prev, data]);
     setNewItem({ sector_id: '', description: '', quantity: '1', unit_price: '', pagamento_tipo: 'avista', parcelas_total: '1' });
     setShowNewItem(false);
@@ -458,13 +526,19 @@ export default function AdminEventDetail() {
   };
 
   // ── Cálculos ──
-  const totalSectors = sectors.reduce((s, sec) => s + sec.value, 0);
-  const totalPaid = sectors.reduce((s, sec) => s + sec.paid, 0);
-  const totalExtras = extras.filter(e => e.approved).reduce((s, e) => s + e.total, 0);
-  const totalEvento = totalSectors + totalExtras;
+  // Total vem dos itens da planilha (não dos setores manuais)
+  const totalPlanilhaAdmin = items.reduce((s, i) => s + (Number(i.total) || 0), 0);
+  const totalExtras = extras.filter(e => e.approved).reduce((s, e) => s + (Number(e.total) || 0), 0);
+  const totalEvento = totalPlanilhaAdmin + totalExtras;
+  // Total pago = soma das parcelas pagas de cada item
+  const totalPaid = items.reduce((s, i) => {
+    const parcTotal = Number(i.parcelas_total) || 1;
+    const parcPagas = Number(i.parcelas_pagas) || 0;
+    return s + (Number(i.total) / parcTotal) * parcPagas;
+  }, 0);
   const emAberto = totalEvento - totalPaid;
   const pct = totalEvento > 0 ? Math.round((totalPaid / totalEvento) * 100) : 0;
-  const margem = form?.budget ? form.budget - totalEvento : null;
+  const margem = form?.budget ? Number(form.budget) - totalEvento : null;
 
   if (loading || !form) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#F5EFE6' }}>
@@ -502,9 +576,9 @@ export default function AdminEventDetail() {
 
       {/* TABS */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'rgba(184,150,90,0.08)', borderRadius: '24px', padding: '4px', width: 'fit-content' }}>
-        {(['info', 'financeiro', 'fotos', 'contracts', 'moodboard', 'messages'] as const).map(t => (
+        {(['info', 'financeiro', 'fotos', 'arquivos', 'contracts', 'moodboard', 'messages'] as const).map(t => (
           <button key={t} style={tabStyle(tab === t)} onClick={() => setTab(t)}>
-            {{ info: 'Informações', financeiro: 'Financeiro', fotos: 'Fotos', contracts: 'Contratos', moodboard: 'Moodboard', messages: 'Mensagens' }[t]}
+            {{ info: 'Informações', financeiro: 'Financeiro', fotos: 'Fotos', arquivos: 'Arquivos', contracts: 'Contratos', moodboard: 'Moodboard', messages: 'Mensagens' }[t]}
           </button>
         ))}
       </div>
@@ -616,6 +690,29 @@ export default function AdminEventDetail() {
                     {form.receita_studio && form.receita_studio < 12000 && (
                       <p style={{ fontSize: '11px', color: '#dc2626', marginTop: '4px' }}>⚠️ Abaixo do mínimo de R$ 12.000</p>
                     )}
+                  </div>
+
+                  {/* Etapas do evento */}
+                  <div>
+                    <label style={labelStyle}>Etapas do Evento</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginTop: '4px' }}>
+                      {([
+                        { key: 'etapa_planejamento', label: '1. Planejamento' },
+                        { key: 'etapa_moodboard',    label: '2. Moodboard' },
+                        { key: 'etapa_orcamento',    label: '3. Orçamento' },
+                        { key: 'etapa_contrato',     label: '4. Contrato' },
+                        { key: 'etapa_pagamento',    label: '5. Pagamento' },
+                        { key: 'etapa_execucao',     label: '6. Execução' },
+                        { key: 'etapa_pos_evento',   label: '7. Pós Evento' },
+                      ] as const).map(({ key, label }) => (
+                        <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: (form as any)[key] ? 'rgba(34,197,94,0.08)' : 'rgba(184,150,90,0.05)', border: `1px solid ${(form as any)[key] ? 'rgba(34,197,94,0.25)' : 'rgba(184,150,90,0.15)'}`, borderRadius: '8px', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={!!(form as any)[key]} onChange={e => setForm({ ...form, [key]: e.target.checked })}
+                            style={{ width: '16px', height: '16px', accentColor: '#B8965A', cursor: 'pointer' }} />
+                          <span style={{ fontSize: '13px', color: (form as any)[key] ? '#16a34a' : '#230606', fontWeight: (form as any)[key] ? 500 : 400 }}>{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: '11px', opacity: 0.4, marginTop: '8px' }}>Salve as alterações para atualizar a timeline do cliente</p>
                   </div>
 
                   <div><label style={labelStyle}>Orçamento Interno (R$)</label><input type="number" style={inputStyle} value={form.orcamento || ''} onChange={e => setForm({ ...form, orcamento: Number(e.target.value) })} placeholder="Custo estimado do evento" /></div>
@@ -748,22 +845,17 @@ export default function AdminEventDetail() {
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
               {[
-                { label: 'Budget do Cliente', editable: true },
-                { label: 'Total do Evento', value: fmt(totalEvento) },
+                { label: 'Budget', value: form.budget ? fmt(Number(form.budget)) : '—', editable: true },
+                { label: 'Total Planilha', value: fmt(totalEvento) },
                 { label: 'Total Pago', value: fmt(totalPaid), gold: true },
                 { label: 'Em Aberto', value: fmt(emAberto), alert: emAberto > 0 },
                 { label: 'Margem', value: margem !== null ? fmt(margem) : '—', positive: margem !== null && margem >= 0, negative: margem !== null && margem < 0 },
               ].map((c, i) => (
                 <div key={i} style={{ ...card, padding: '16px' }}>
                   <p style={{ fontSize: '10px', opacity: 0.5, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{c.label}</p>
-                  {i === 0 ? (
-                    <input type="number" style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '18px', fontFamily: 'Playfair Display, serif', color: '#230606', width: '100%', padding: 0 }}
-                      value={form.budget || ''} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} onBlur={handleSave} placeholder="—" />
-                  ) : (
-                    <p style={{ fontSize: '18px', fontFamily: 'Playfair Display, serif', fontWeight: 400, color: (c as any).gold ? '#B8965A' : (c as any).alert ? '#dc2626' : (c as any).positive ? '#16a34a' : (c as any).negative ? '#dc2626' : '#230606' }}>
-                      {(c as any).value}
-                    </p>
-                  )}
+                  <p style={{ fontSize: '18px', fontFamily: 'Playfair Display, serif', fontWeight: 400, color: (c as any).gold ? '#B8965A' : (c as any).alert ? '#dc2626' : (c as any).positive ? '#16a34a' : (c as any).negative ? '#dc2626' : '#230606' }}>
+                    {(c as any).value}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1075,6 +1167,49 @@ export default function AdminEventDetail() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── ABA: ARQUIVOS ── */}
+        {tab === 'arquivos' && (
+          <div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#B8965A', color: '#230606', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, width: 'fit-content' }}>
+                <Upload size={15} />
+                {uploadingArquivos ? 'Enviando...' : 'Adicionar arquivos'}
+                <input type="file" multiple style={{ display: 'none' }} onChange={handleUploadArquivos} />
+              </label>
+              <p style={{ fontSize: '11px', opacity: 0.4, marginTop: '8px' }}>Estes arquivos ficam visíveis para o cliente na tela de Arquivos</p>
+            </div>
+            {arquivos.length === 0 ? (
+              <div style={{ ...card, padding: '40px', textAlign: 'center' }}>
+                <FileText size={40} style={{ margin: '0 auto 12px', color: '#230606', opacity: 0.2 }} />
+                <p style={{ fontSize: '13px', color: '#230606', opacity: 0.5 }}>Nenhum arquivo adicionado ainda</p>
+              </div>
+            ) : arquivos.map((arquivo: any) => (
+              <div key={arquivo.id} style={{ ...card, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '10px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: 'rgba(184,150,90,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FileText size={18} style={{ color: '#B8965A' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '14px', color: '#230606', marginBottom: '2px' }}>{arquivo.name}</p>
+                  <div style={{ display: 'flex', gap: '8px', fontSize: '12px', opacity: 0.5 }}>
+                    <span>{new Date(arquivo.created_at).toLocaleDateString('pt-BR')}</span>
+                    {arquivo.size && <><span>·</span><span>{arquivo.size}</span></>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <a href={arquivo.file_url} target="_blank" rel="noreferrer"
+                    style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: '#B8965A', color: '#230606', borderRadius: '6px', fontSize: '12px', fontWeight: 500, textDecoration: 'none' }}>
+                    <Download size={12} /> Ver
+                  </a>
+                  <button onClick={() => deleteArquivo(arquivo.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#dc2626' }}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

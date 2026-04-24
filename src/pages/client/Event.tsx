@@ -4,9 +4,9 @@ import { Share2, MapPin, Calendar, CheckCircle2, Circle, DollarSign, FileText, C
 import { useEvent } from '../../context/EventContext';
 import { useNavigate } from 'react-router';
 
-const timelineSteps = ['Contrato', 'Pagamento', 'Moodboard', 'Planejamento', 'Execução', 'Entrega'];
+const timelineSteps = ['Planejamento', 'Moodboard', 'Orçamento', 'Contrato', 'Pagamento', 'Execução', 'Pós Evento'];
 
-const statusOrder = ['contrato', 'pagamento', 'moodboard', 'planejamento', 'execucao', 'entrega'];
+const etapasKeys = ['etapa_planejamento', 'etapa_moodboard', 'etapa_orcamento', 'etapa_contrato', 'etapa_pagamento', 'etapa_execucao', 'etapa_pos_evento'] as const;
 
 export default function ClientEvent() {
   const { evento, loading, logout } = useEvent();
@@ -24,11 +24,12 @@ export default function ClientEvent() {
     return null;
   }
 
-  const currentStepIndex = statusOrder.indexOf(evento.status?.toLowerCase() || 'planejamento');
-
   const getStepStatus = (index: number) => {
-    if (index < currentStepIndex) return 'complete';
-    if (index === currentStepIndex) return 'active';
+    const key = etapasKeys[index];
+    if ((evento as any)[key]) return 'complete';
+    // Encontrar a primeira etapa não completa = active
+    const primeiraIncompleta = etapasKeys.findIndex(k => !(evento as any)[k]);
+    if (index === primeiraIncompleta) return 'active';
     return 'pending';
   };
 
