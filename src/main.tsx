@@ -12,3 +12,4 @@ createRoot(document.getElementById('root')!).render(
     </EventProvider>
   </StrictMode>
 );
+import './styles/mobile.css'

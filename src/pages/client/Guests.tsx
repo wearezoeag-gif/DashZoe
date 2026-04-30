@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle2, Clock, XCircle, Users, Search, UserPlus, Upload, Trash2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 type Guest = {
   id: string;
@@ -49,6 +50,7 @@ const statusConfig = {
 };
 
 export default function ClientGuests() {
+  const isMobile = useIsMobile();
   const [eventId, setEventId] = useState<string | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,7 +166,7 @@ export default function ClientGuests() {
   );
 
   return (
-    <div style={{ padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
@@ -186,7 +188,7 @@ export default function ClientGuests() {
       </div>
 
       {/* MÉTRICAS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {[
           { label: 'Total (+ acomp.)', value: totalWithCompanions, icon: Users, color: '#230606' },
           { label: 'Confirmados', value: confirmed, icon: CheckCircle2, color: '#16a34a' },
@@ -285,7 +287,7 @@ export default function ClientGuests() {
                 <input style={inputStyle} placeholder="Nome do convidado" value={newGuest.name} onChange={e => setNewGuest({ ...newGuest, name: e.target.value })}
                   onKeyDown={e => e.key === 'Enter' && addGuest()} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Acompanhantes</label>
                   <input type="number" min="0" style={inputStyle} value={newGuest.companions} onChange={e => setNewGuest({ ...newGuest, companions: e.target.value })} />

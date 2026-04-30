@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
 import { User, Users, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -12,9 +12,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
+  const [guestCode, setGuestCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,11 +24,35 @@ export default function Login() {
     setLoading(true);
 
     if (selectedType === 'guest') {
-      // Convidado não precisa de senha, só registra e redireciona
-      const { error } = await supabase.auth.signInWithOtp({ email: guestEmail });
+      if (!guestName.trim() || !guestEmail.trim() || !guestCode.trim()) {
+        setError('Preencha todos os campos.');
+        setLoading(false);
+        return;
+      }
+      // Buscar evento pelo código
+      const { data: evento } = await supabase
+        .from('eventos')
+        .select('id')
+        .ilike('codigo_acesso', guestCode.trim())
+        .single();
+
+      if (!evento) {
+        setError('Código do evento inválido. Verifique com o organizador.');
+        setLoading(false);
+        return;
+      }
+
+      // Registrar acesso do convidado
+      await supabase.from('guests').upsert({
+        event_id: evento.id,
+        name: guestName.trim(),
+        contact: guestEmail.trim(),
+        status: 'pending',
+        companions: 0,
+      }, { onConflict: 'event_id,contact' });
+
       setLoading(false);
-      if (error) { setError('Erro ao acessar. Tente novamente.'); return; }
-      navigate('/convidado');
+      navigate(`/evento/${evento.id}`);
       return;
     }
 
@@ -64,7 +90,7 @@ export default function Login() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             {[
               { type: 'client' as UserType, icon: User, label: 'Sou cliente', sub: 'Acesse seu evento' },
-              { type: 'guest' as UserType, icon: Users, label: 'Sou convidado', sub: 'Visualize fotos' },
+              { type: 'guest' as UserType, icon: Users, label: 'Sou convidado', sub: 'Acesse com seu código' },
               { type: 'admin' as UserType, icon: Lock, label: 'Acesso interno', sub: 'Equipe Studio Zoe' },
             ].map(({ type, icon: Icon, label, sub }) => (
               <motion.button
@@ -83,7 +109,9 @@ export default function Login() {
             ))}
           </div>
           <p style={{ textAlign: 'center', marginTop: '48px', fontSize: '12px', color: '#F5EFE6', opacity: 0.4 }}>
-            studiozoe.co
+            <a href="https://studiozoe.co" target="_blank" rel="noopener noreferrer" style={{ color: '#F5EFE6', textDecoration: 'none' }}>
+              studiozoe.co
+            </a>
           </p>
         </motion.div>
       </div>
@@ -106,16 +134,23 @@ export default function Login() {
             {selectedType === 'guest' ? (
               <>
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', color: '#F5EFE6', opacity: 0.6, marginBottom: '8px', letterSpacing: '0.1em' }}>NOME</label>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#F5EFE6', opacity: 0.6, marginBottom: '8px', letterSpacing: '0.1em' }}>NOME COMPLETO</label>
                   <input type="text" value={guestName} onChange={e => setGuestName(e.target.value)}
                     style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(184,150,90,0.25)', borderRadius: '6px', padding: '10px 14px', color: '#F5EFE6', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                    placeholder="Seu nome" required />
+                    placeholder="Seu nome completo" required />
                 </div>
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', color: '#F5EFE6', opacity: 0.6, marginBottom: '8px', letterSpacing: '0.1em' }}>EMAIL</label>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#F5EFE6', opacity: 0.6, marginBottom: '8px', letterSpacing: '0.1em' }}>E-MAIL</label>
                   <input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)}
                     style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(184,150,90,0.25)', borderRadius: '6px', padding: '10px 14px', color: '#F5EFE6', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
                     placeholder="seu@email.com" required />
+                </div>
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#F5EFE6', opacity: 0.6, marginBottom: '8px', letterSpacing: '0.1em' }}>CÓDIGO DO EVENTO</label>
+                  <input type="text" value={guestCode} onChange={e => setGuestCode(e.target.value.toUpperCase())}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(184,150,90,0.25)', borderRadius: '6px', padding: '10px 14px', color: '#F5EFE6', fontSize: '14px', outline: 'none', boxSizing: 'border-box', letterSpacing: '0.15em', textAlign: 'center', fontWeight: 500 }}
+                    placeholder="ZOE12345" required />
+                  <p style={{ fontSize: '11px', color: '#F5EFE6', opacity: 0.35, marginTop: '6px', textAlign: 'center' }}>Código fornecido pelo organizador do evento</p>
                 </div>
               </>
             ) : (

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Save, Bell, User, Lock, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ function sectionHeader(icon: React.ReactNode, title: string) {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function ClientSettings() {
+  const isMobile = useIsMobile();
   const [userEmail, setUserEmail] = useState('');
   const [eventoNome, setEventoNome] = useState('');
 
@@ -167,7 +169,7 @@ export default function ClientSettings() {
   ] as const;
 
   return (
-    <div style={{ padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       {/* HEADER */}
       <div style={{ marginBottom: '24px' }}>
@@ -179,7 +181,7 @@ export default function ClientSettings() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '24px' }}>
 
         {/* ── PERFIL ── */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={card}>

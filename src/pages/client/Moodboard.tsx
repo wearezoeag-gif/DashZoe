@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Masonry from 'react-responsive-masonry';
 import { motion } from 'motion/react';
 import { Sparkles, ThumbsUp, ThumbsDown, MessageSquare, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -91,11 +90,11 @@ export default function ClientMoodboard() {
           </p>
         </motion.div>
       ) : (
-        <Masonry columnsCount={3} gutter="16px">
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3px' }}>
           {images.map((img) => (
             <div
               key={img.id}
-              style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', marginBottom: '0' }}
+              style={{ position: 'relative', aspectRatio: '1', overflow: 'hidden' }}
               onMouseEnter={() => setHoveredId(img.id)}
               onMouseLeave={() => { setHoveredId(null); setCommentBox(null); }}
             >
@@ -203,7 +202,7 @@ export default function ClientMoodboard() {
               </div>
             </div>
           ))}
-        </Masonry>
+        </div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Search, ArrowRight, Calendar, MapPin, Users, X, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { useNavigate } from 'react-router';
 
 type Evento = {
@@ -42,6 +43,7 @@ const emptyForm = {
 };
 
 export default function AdminEvents() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +155,7 @@ export default function AdminEvents() {
   );
 
   return (
-    <div style={{ padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
@@ -168,7 +170,7 @@ export default function AdminEvents() {
       </div>
 
       {/* MÉTRICAS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {[
           { label: 'Total Ativos', value: ativos.length },
           { label: 'Em Execução', value: ativos.filter(e => e.status === 'Em Execução').length },
@@ -184,13 +186,13 @@ export default function AdminEvents() {
       </div>
 
       {/* FILTROS */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', marginBottom: '20px', alignItems: isMobile ? 'stretch' : 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#FDFAF6', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '6px', padding: '8px 14px', flex: 1, minWidth: '200px' }}>
           <Search size={14} style={{ color: '#230606', opacity: 0.4 }} />
           <input type="text" placeholder="Buscar evento ou cliente..." value={search} onChange={e => setSearch(e.target.value)}
             style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '13px', color: '#230606', width: '100%' }} />
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           {statuses.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(184,150,90,0.25)', background: statusFilter === s ? '#B8965A' : 'transparent', color: '#230606', opacity: statusFilter === s ? 1 : 0.6 }}>
@@ -238,7 +240,7 @@ export default function AdminEvents() {
           {showEncerrados && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredEncerrados.length === 0 ? (
-                <div style={{ ...card, padding: '32px', textAlign: 'center' }}>
+                <div style={{ ...card, padding: isMobile ? '16px' : '32px', textAlign: 'center' }}>
                   <p style={{ fontSize: '13px', opacity: 0.4 }}>Nenhum evento encerrado encontrado</p>
                 </div>
               ) : filteredEncerrados.map((event, i) => (
@@ -284,7 +286,7 @@ export default function AdminEvents() {
                 </div>
               ))}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#230606', opacity: 0.6, marginBottom: '6px' }}>Data</label>
                   <input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} required
@@ -297,7 +299,7 @@ export default function AdminEvents() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#230606', opacity: 0.6, marginBottom: '6px' }}>Orçamento (R$)</label>
                   <input type="number" placeholder="0" value={form.orcamento} onChange={e => setForm({ ...form, orcamento: e.target.value })}

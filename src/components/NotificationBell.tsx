@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, MessageCircle, FileText, Image, DollarSign, Users, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router';
 
 type NotifType = 'message' | 'contract' | 'document' | 'moodboard' | 'payment' | 'guest' | 'receipt';
 
@@ -12,16 +13,17 @@ type Notification = {
   event_id: string | null;
   read: boolean;
   created_at: string;
+  recipient: string;
 };
 
-const typeConfig: Record<NotifType, { icon: React.ElementType; color: string; bg: string; label: string }> = {
-  message:   { icon: MessageCircle, color: '#5C1A2E', bg: 'rgba(92,26,46,0.1)',   label: 'Mensagem' },
-  contract:  { icon: FileText,      color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', label: 'Contrato' },
-  document:  { icon: FileText,      color: '#ca8a04', bg: 'rgba(234,179,8,0.1)',  label: 'Documento' },
-  moodboard: { icon: Image,         color: '#9333ea', bg: 'rgba(168,85,247,0.1)', label: 'Moodboard' },
-  payment:   { icon: DollarSign,    color: '#16a34a', bg: 'rgba(34,197,94,0.1)',  label: 'Pagamento' },
-  guest:     { icon: Users,         color: '#B8965A', bg: 'rgba(184,150,90,0.1)', label: 'Convidado' },
-  receipt:   { icon: DollarSign,    color: '#0ea5e9', bg: 'rgba(14,165,233,0.1)', label: 'Comprovante' },
+const typeConfig: Record<NotifType, { icon: React.ElementType; color: string; bg: string; label: string; route: (recipient: string, eventId?: string | null) => string }> = {
+  message:   { icon: MessageCircle, color: '#5C1A2E', bg: 'rgba(92,26,46,0.1)',   label: 'Mensagem',    route: (r) => r === 'admin' ? '/admin/eventos' : '/cliente/mensagens' },
+  contract:  { icon: FileText,      color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', label: 'Contrato',    route: (r) => r === 'admin' ? '/admin/eventos' : '/cliente/contratos' },
+  document:  { icon: FileText,      color: '#ca8a04', bg: 'rgba(234,179,8,0.1)',  label: 'Documento',   route: (r) => r === 'admin' ? '/admin/eventos' : '/cliente/arquivos' },
+  moodboard: { icon: Image,         color: '#9333ea', bg: 'rgba(168,85,247,0.1)', label: 'Moodboard',   route: (r, id) => r === 'admin' ? '/admin/eventos' : `/cliente/moodboard/${id ?? ''}` },
+  payment:   { icon: DollarSign,    color: '#16a34a', bg: 'rgba(34,197,94,0.1)',  label: 'Pagamento',   route: (r) => r === 'admin' ? '/admin/financeiro' : '/cliente/financeiro' },
+  guest:     { icon: Users,         color: '#B8965A', bg: 'rgba(184,150,90,0.1)', label: 'Convidado',   route: (r) => r === 'admin' ? '/admin/eventos' : '/cliente/convidados' },
+  receipt:   { icon: DollarSign,    color: '#0ea5e9', bg: 'rgba(14,165,233,0.1)', label: 'Comprovante', route: (r) => r === 'admin' ? '/admin/financeiro' : '/cliente/financeiro' },
 };
 
 function timeAgo(date: string) {
@@ -40,6 +42,7 @@ export default function NotificationBell({ recipient }: Props) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const unread = notifications.filter(n => !n.read).length;
 
@@ -55,16 +58,10 @@ export default function NotificationBell({ recipient }: Props) {
 
   useEffect(() => {
     void fetchNotifications();
-
     const channel = supabase
       .channel(`notif-${recipient}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-      }, () => { void fetchNotifications(); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => { void fetchNotifications(); })
       .subscribe();
-
     return () => { void supabase.removeChannel(channel); };
   }, [recipient]);
 
@@ -81,9 +78,12 @@ export default function NotificationBell({ recipient }: Props) {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const markOneRead = async (id: string) => {
-    await supabase.from('notifications').update({ read: true }).eq('id', id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const handleNotifClick = async (n: Notification) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', n.id);
+    setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+    setOpen(false);
+    const cfg = typeConfig[n.type] || typeConfig.message;
+    navigate(cfg.route(recipient, n.event_id));
   };
 
   return (
@@ -155,7 +155,7 @@ export default function NotificationBell({ recipient }: Props) {
               return (
                 <div
                   key={n.id}
-                  onClick={() => markOneRead(n.id)}
+                  onClick={() => handleNotifClick(n)}
                   style={{
                     padding: '14px 20px',
                     borderBottom: '1px solid rgba(184,150,90,0.08)',

@@ -6,6 +6,7 @@ import {
   AlertCircle, MessageCircle, TrendingUp, UserCheck
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -167,7 +169,7 @@ export default function AdminDashboard() {
       setEventos(ativos);
       setProximosEventos(proximos);
       setAlerts(alertList);
-      setMensagensRecentes((mensagensRes.data || []) as unknown as Mensagem[]);
+      setMensagensRecentes((mensagensRes.data || []) as Mensagem[]);
       setMetrics({
         eventosAtivos: ativos.length,
         receitaStudio,
@@ -204,7 +206,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* 4 MÉTRICAS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
 
         {/* Eventos Ativos */}
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
@@ -291,7 +293,7 @@ export default function AdminDashboard() {
       )}
 
       {/* LINHA 2: PRÓXIMOS EVENTOS + MENSAGENS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '24px' }}>
 
         {/* Próximos eventos */}
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} style={card}>
@@ -365,7 +367,7 @@ export default function AdminDashboard() {
                     {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
-                <p style={{ fontSize: '12px', opacity: 0.6, paddingLeft: '34px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p style={{ fontSize: '12px', opacity: 0.6, paddingLeft: '34px', overflow: 'hidden', maxWidth: '100vw', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {msg.text}
                 </p>
               </div>

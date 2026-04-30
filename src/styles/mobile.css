@@ -1,0 +1,40 @@
+@media (max-width: 768px) {
+    /* Grids adaptativos */
+    [style*="gridTemplateColumns"] {
+      grid-template-columns: 1fr !important;
+    }
+  
+    /* Padding reduzido */
+    [style*="padding: '32px'"],
+    [style*="padding: '40px'"] {
+      padding: 16px !important;
+    }
+  
+    /* Tabelas com scroll horizontal */
+    table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  
+    /* Botões não quebram */
+    button {
+      white-space: nowrap;
+    }
+  
+    /* Flex wrap em headers */
+    [style*="justifyContent: 'space-between'"] {
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  }
+  
+  /* Scroll suave */
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  body {
+    overflow-x: hidden;
+  }

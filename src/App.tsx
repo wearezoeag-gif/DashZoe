@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router';
 
 // Layouts
 import AdminLayout from './components/layout/AdminLayout';
@@ -31,6 +31,7 @@ import ClientSettings from './pages/client/Settings';
 // Guest
 import GuestGallery from './pages/guest/Gallery';
 import RSVPPage from './pages/guest/RSVPPage';
+import GuestNPS from './pages/guest/GuestNPS';
 
 // 404
 import NotFound from './pages/NotFound';
@@ -46,8 +47,8 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="eventos" element={<AdminEvents />} />
-          <Route path="eventos/:id" element={<AdminEventDetail />} />
           <Route path="eventos/:id/convidados" element={<AdminGuests />} />
+          <Route path="eventos/:id" element={<AdminEventDetail />} />
           <Route path="leads" element={<AdminLeads />} />
           <Route path="nps" element={<AdminNPS />} />
           <Route path="financeiro" element={<AdminFinancial />} />
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="Arquivos" element={<ClientArquivos />} />
           <Route path="mensagens" element={<ClientMessages />} />
           <Route path="moodboard" element={<ClientMoodboard />} />
+          <Route path="moodboard/:id" element={<ClientMoodboard />} />
           <Route path="convidados" element={<ClientGuests />} />
           <Route path="fotos" element={<ClientFotos />} />
           <Route path="configuracoes" element={<ClientSettings />} />
@@ -71,6 +73,7 @@ export default function App() {
         <Route path="/convidado" element={<GuestGallery />} />
         <Route path="/evento/:slug" element={<GuestGallery />} />
         <Route path="/rsvp/:id" element={<RSVPPage />} />
+        <Route path="/nps" element={<GuestNPS />} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

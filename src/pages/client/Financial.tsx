@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle2, Clock, Upload, FileText, Download, ChevronDown, ChevronUp, CreditCard } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 type Item = {
   id: string;
@@ -28,6 +29,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({ padding: '8px 18px
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function ClientFinancial() {
+  const isMobile = useIsMobile();
   const [eventId, setEventId] = useState<string | null>(null);
   const [budget, setBudget] = useState<number | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -58,7 +60,6 @@ export default function ClientFinancial() {
     const [itemsRes, extrasRes, comprovantesRes] = await Promise.all([
       supabase.from('event_items').select('*, event_sectors(name)').eq('event_id', eid).order('created_at'),
       supabase.from('event_extras').select('*').eq('event_id', eid).order('created_at'),
-      supabase.from('event_extras').select('*').eq('event_id', eid).eq('approved', true).order('created_at'),
       supabase.from('comprovantes_setor').select('*').eq('event_id', eid).order('created_at', { ascending: false }),
     ]);
     setItems((itemsRes.data || []).map((i: any) => ({ ...i, pagamento_tipo: i.pagamento_tipo || 'avista', parcelas_total: i.parcelas_total || 1, parcelas_pagas: i.parcelas_pagas || 0, setor_nome: (i.event_sectors as any)?.name || 'Sem setor' })));
@@ -130,7 +131,7 @@ export default function ClientFinancial() {
   );
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+    <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '16px' : '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: '#5C1A2E', fontWeight: 400, marginBottom: '4px' }}>Financeiro</h1>
@@ -138,7 +139,7 @@ export default function ClientFinancial() {
       </div>
 
       {/* 5 CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
         {[
           { label: 'Budget', value: budget ? fmt(budget) : '—', color: '#230606' },
           { label: 'Total Planilha', value: fmt(totalPlanilha), color: '#230606' },
@@ -173,7 +174,7 @@ export default function ClientFinancial() {
               <p style={{ fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(totalPlanilha)}</p>
             </div>
             {todosItens.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum item ainda</div>
+              <div style={{ padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum item ainda</div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -235,7 +236,7 @@ export default function ClientFinancial() {
         {tab === 'setores' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {setores.length === 0 ? (
-              <div style={{ ...card, padding: '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum setor ainda</div>
+              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum setor ainda</div>
             ) : setores.map(setor => {
               const pct = setor.total > 0 ? Math.round((setor.pago / setor.total) * 100) : 0;
               const isExpanded = expandedSetor === setor.nome;
@@ -297,7 +298,7 @@ export default function ClientFinancial() {
               <p style={{ fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(extrasAll.filter((e: any) => e.approved).reduce((s: number, e: any) => s + e.total, 0))} aprovados</p>
             </div>
             {extrasAll.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum extra ainda</div>
+              <div style={{ padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum extra ainda</div>
             ) : extrasAll.map((extra: any) => (
               <div key={extra.id} style={{ padding: '14px 20px', borderBottom: '1px solid rgba(184,150,90,0.07)', display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{ flex: 1 }}>
@@ -324,7 +325,7 @@ export default function ClientFinancial() {
         {tab === 'comprovantes' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {setores.length === 0 ? (
-              <div style={{ ...card, padding: '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum setor ainda</div>
+              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum setor ainda</div>
             ) : setores.map(setor => {
               const comprovantesDoSetor = comprovantesSetor.filter(c => c.setor_nome === setor.nome);
               return (
@@ -348,7 +349,7 @@ export default function ClientFinancial() {
                         <FileText size={16} style={{ color: '#B8965A' }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</p>
+                        <p style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{c.name}</p>
                         <p style={{ fontSize: '11px', opacity: 0.4 }}>{new Date(c.created_at).toLocaleDateString('pt-BR')}</p>
                       </div>
                       <a href={c.file_url} target="_blank" rel="noreferrer"

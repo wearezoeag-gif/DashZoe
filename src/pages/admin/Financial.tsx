@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { DollarSign, TrendingUp, TrendingDown, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 type Despesa = {
   id: string;
@@ -31,6 +32,7 @@ const CATEGORIAS = ['Salários', 'Ferramentas', 'Escritório', 'Marketing', 'Imp
 const emptyForm = { descricao: '', categoria: 'Outros', valor: '', data: new Date().toISOString().split('T')[0], recorrente: false, notas: '' };
 
 export default function AdminFinancial() {
+  const isMobile = useIsMobile();
   const [loading, setLoading]       = useState(true);
   const [despesas, setDespesas]     = useState<Despesa[]>([]);
   const [eventos, setEventos]       = useState<EventoReceita[]>([]);
@@ -113,7 +115,7 @@ export default function AdminFinancial() {
   );
 
   return (
-    <div style={{ padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
@@ -137,7 +139,7 @@ export default function AdminFinancial() {
       </div>
 
       {/* MÉTRICAS DO MÊS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {[
           { label: 'Receita Studio Zoe', value: fmt(receitaMes), sub: varReceita !== null ? `${varReceita >= 0 ? '+' : ''}${varReceita}% vs mês anterior` : 'sem comparativo', icon: DollarSign, color: '#B8965A' },
           { label: 'Despesas do Mês', value: fmt(totalDespesasMes), sub: `${despesasMes.length} lançamento${despesasMes.length !== 1 ? 's' : ''}`, icon: TrendingDown, color: totalDespesasMes > 0 ? '#dc2626' : '#230606' },
@@ -217,7 +219,7 @@ export default function AdminFinancial() {
       </div>
 
       {/* RECEITA POR EVENTO + DESPESAS DO MÊS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
 
         {/* Receita por evento */}
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} style={card}>
@@ -227,7 +229,7 @@ export default function AdminFinancial() {
           </div>
           <div>
             {eventos.filter(e => e.receitaStudio > 0).length === 0 ? (
-              <p style={{ fontSize: '13px', opacity: 0.35, textAlign: 'center', padding: '32px' }}>Nenhum evento com setores cadastrados</p>
+              <p style={{ fontSize: '13px', opacity: 0.35, textAlign: 'center', padding: isMobile ? '16px' : '32px' }}>Nenhum evento com setores cadastrados</p>
             ) : eventos.filter(e => e.receitaStudio > 0).map(e => (
               <div key={e.id} style={{ padding: '13px 20px', borderBottom: '1px solid rgba(184,150,90,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -256,7 +258,7 @@ export default function AdminFinancial() {
           </div>
           <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
             {despesasMes.length === 0 ? (
-              <p style={{ fontSize: '13px', opacity: 0.35, textAlign: 'center', padding: '32px' }}>Nenhuma despesa em {MESES[periodoMes]}</p>
+              <p style={{ fontSize: '13px', opacity: 0.35, textAlign: 'center', padding: isMobile ? '16px' : '32px' }}>Nenhuma despesa em {MESES[periodoMes]}</p>
             ) : despesasMes.map(d => (
               <div key={d.id} style={{ padding: '12px 20px', borderBottom: '1px solid rgba(184,150,90,0.07)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
@@ -290,7 +292,7 @@ export default function AdminFinancial() {
                 <label style={labelStyle}>Descrição *</label>
                 <input style={inputStyle} placeholder="Ex: Salário assistente" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Categoria</label>
                   <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })}>
@@ -302,7 +304,7 @@ export default function AdminFinancial() {
                   <input type="number" style={inputStyle} placeholder="0" value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })} required />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Data</label>
                   <input type="date" style={inputStyle} value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} />

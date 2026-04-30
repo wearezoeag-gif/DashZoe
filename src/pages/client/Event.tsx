@@ -1,16 +1,18 @@
-import React from 'react';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Share2, MapPin, Calendar, CheckCircle2, Circle, DollarSign, FileText, Camera, MessageCircle, Sparkles, ArrowRight } from 'lucide-react';
+import { Share2, MapPin, Calendar, CheckCircle2, Circle, DollarSign, FileText, Camera, MessageCircle, Sparkles, ArrowRight, Copy, Check } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
 import { useNavigate } from 'react-router';
 
 const timelineSteps = ['Planejamento', 'Moodboard', 'Orçamento', 'Contrato', 'Pagamento', 'Execução', 'Pós Evento'];
-
 const etapasKeys = ['etapa_planejamento', 'etapa_moodboard', 'etapa_orcamento', 'etapa_contrato', 'etapa_pagamento', 'etapa_execucao', 'etapa_pos_evento'] as const;
 
 export default function ClientEvent() {
+  const isMobile = useIsMobile();
   const { evento, loading, logout } = useEvent();
   const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#F5EFE6' }}>
@@ -27,10 +29,17 @@ export default function ClientEvent() {
   const getStepStatus = (index: number) => {
     const key = etapasKeys[index];
     if ((evento as any)[key]) return 'complete';
-    // Encontrar a primeira etapa não completa = active
     const primeiraIncompleta = etapasKeys.findIndex(k => !(evento as any)[k]);
     if (index === primeiraIncompleta) return 'active';
     return 'pending';
+  };
+
+  const handleShare = () => {
+    const link = `${window.location.origin}/dashboard/convidado?evento=${evento.id}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    });
   };
 
   const summaryCards = [
@@ -42,7 +51,7 @@ export default function ClientEvent() {
   ];
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '40px', maxWidth: '1000px', margin: '0 auto' }}>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', paddingBottom: '32px' }}>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '36px', color: '#5C1A2E', marginBottom: '8px', fontWeight: 400 }}>
           Bem-vinda, {evento.cliente_nome?.split(' ')[0]}
@@ -51,7 +60,7 @@ export default function ClientEvent() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        style={{ background: '#FDFAF6', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '10px', padding: '32px', marginBottom: '24px' }}>
+        style={{ background: '#FDFAF6', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '10px', padding: isMobile ? '16px' : '32px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: '#5C1A2E', marginBottom: '12px', fontWeight: 400 }}>{evento.nome}</h2>
@@ -64,8 +73,10 @@ export default function ClientEvent() {
               </span>
             </div>
           </div>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
-            <Share2 size={14} />Compartilhar com convidados
+          <button
+            onClick={handleShare}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: copied ? '#5C1A2E' : '#B8965A', color: copied ? '#F5EFE6' : '#230606', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' }}>
+            {copied ? <><Check size={14} />Link copiado!</> : <><Share2 size={14} />Compartilhar com convidados</>}
           </button>
         </div>
 
@@ -98,7 +109,7 @@ export default function ClientEvent() {
         </div>
       </motion.div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {summaryCards.map((card, index) => {
           const Icon = card.icon;
           return (

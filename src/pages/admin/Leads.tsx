@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Search, Phone, Mail, ArrowRight, Users, TrendingUp, Clock, CheckCircle2, X, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ const emptyForm = {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function AdminLeads() {
+  const isMobile = useIsMobile();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -209,7 +211,7 @@ export default function AdminLeads() {
   ];
 
   return (
-    <div style={{ padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
@@ -224,7 +226,7 @@ export default function AdminLeads() {
       </div>
 
       {/* MÉTRICAS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {metricas.map((m, i) => {
           const Icon = m.icon;
           return (
@@ -249,7 +251,7 @@ export default function AdminLeads() {
           <input type="text" placeholder="Buscar por nome, email ou evento..." value={search} onChange={e => setSearch(e.target.value)}
             style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '13px', color: '#230606', width: '100%' }} />
         </div>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', flexShrink: 0 }}>
           {statuses.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', border: '1px solid rgba(184,150,90,0.25)', background: statusFilter === s ? '#B8965A' : 'transparent', color: '#230606', opacity: statusFilter === s ? 1 : 0.6 }}>
@@ -344,7 +346,7 @@ export default function AdminLeads() {
               </div>
 
               {/* Email + Telefone */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Email</label>
                   <input type="email" style={inputStyle} placeholder="email@exemplo.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
@@ -356,7 +358,7 @@ export default function AdminLeads() {
               </div>
 
               {/* Tipo de evento + Data */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Tipo de Evento</label>
                   <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.tipo_evento} onChange={e => setForm({ ...form, tipo_evento: e.target.value })}>
@@ -371,7 +373,7 @@ export default function AdminLeads() {
               </div>
 
               {/* Convidados + Orçamento */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Nº de Convidados</label>
                   <input type="number" style={inputStyle} placeholder="0" value={form.convidados} onChange={e => setForm({ ...form, convidados: e.target.value })} />
@@ -383,7 +385,7 @@ export default function AdminLeads() {
               </div>
 
               {/* Origem + Status */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Origem</label>
                   <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.origem} onChange={e => setForm({ ...form, origem: e.target.value })}>

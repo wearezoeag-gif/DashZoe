@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Save, Bell, User, Lock, Globe, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ function sectionHeader(icon: React.ReactNode, title: string) {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function AdminSettings() {
+  const isMobile = useIsMobile();
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId]       = useState('');
 
@@ -173,14 +175,14 @@ export default function AdminSettings() {
   ] as const;
 
   return (
-    <div style={{ padding: '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: '#5C1A2E', marginBottom: '4px', fontWeight: 400 }}>Configurações</h1>
         <p style={{ fontSize: '13px', color: '#230606', opacity: 0.5 }}>Perfil e preferências do sistema</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '24px' }}>
 
         {/* ── PERFIL ── */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={card}>

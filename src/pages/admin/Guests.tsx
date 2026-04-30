@@ -7,8 +7,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type Guest = {
   id: string;
   name: string;
@@ -21,8 +19,6 @@ type Guest = {
   companions: number;
   confirmed_at: string | null;
 };
-
-// ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const card: React.CSSProperties = {
   background: '#FDFAF6',
@@ -59,8 +55,6 @@ const statusConfig = {
   declined:  { label: 'Recusado',   bg: 'rgba(239,68,68,0.1)',  color: '#dc2626', icon: XCircle },
 };
 
-// ─── Componente ───────────────────────────────────────────────────────────────
-
 export default function AdminGuests() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -73,15 +67,19 @@ export default function AdminGuests() {
   const [uploading, setUploading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [codigoEvento, setCodigoEvento] = useState('');
 
   const [newGuest, setNewGuest] = useState({
     name: '', date_of_birth: '', contact: '', companions: '0',
   });
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
-
   useEffect(() => {
     fetchGuests();
+    if (id) {
+      supabase.from('eventos').select('codigo_acesso').eq('id', id).single().then(({ data }) => {
+        if (data) setCodigoEvento(data.codigo_acesso || '');
+      });
+    }
   }, [id]);
 
   const fetchGuests = async () => {
@@ -94,8 +92,6 @@ export default function AdminGuests() {
     setGuests(data || []);
     setLoading(false);
   };
-
-  // ── Adicionar convidado ───────────────────────────────────────────────────
 
   const addGuest = async () => {
     if (!newGuest.name.trim() || !id) return;
@@ -114,19 +110,14 @@ export default function AdminGuests() {
     setSaving(false);
   };
 
-  // ── Importar Excel ────────────────────────────────────────────────────────
-
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id) return;
     setUploading(true);
-
     try {
-      // Lê o arquivo como texto CSV ou usa SheetJS via CDN
       const text = await file.text();
       const lines = text.split('\n').filter(l => l.trim());
-      const rows = lines.slice(1); // pula cabeçalho
-
+      const rows = lines.slice(1);
       const toInsert = rows.map(row => {
         const cols = row.split(',').map(c => c.trim().replace(/"/g, ''));
         return {
@@ -138,7 +129,6 @@ export default function AdminGuests() {
           status: 'pending',
         };
       }).filter(g => g.name);
-
       if (toInsert.length > 0) {
         await supabase.from('guests').insert(toInsert);
         await fetchGuests();
@@ -146,12 +136,9 @@ export default function AdminGuests() {
     } catch (err) {
       console.error('Erro ao importar:', err);
     }
-
     setUploading(false);
     e.target.value = '';
   };
-
-  // ── Alterar status ────────────────────────────────────────────────────────
 
   const updateStatus = async (guestId: string, status: Guest['status']) => {
     await supabase.from('guests').update({
@@ -162,25 +149,19 @@ export default function AdminGuests() {
     if (showGuestDetail?.id === guestId) setShowGuestDetail(prev => prev ? { ...prev, status } : null);
   };
 
-  // ── Deletar ───────────────────────────────────────────────────────────────
-
   const deleteGuest = async (guestId: string) => {
     await supabase.from('guests').delete().eq('id', guestId);
     setGuests(prev => prev.filter(g => g.id !== guestId));
     setShowGuestDetail(null);
   };
 
-  // ── Link RSVP ─────────────────────────────────────────────────────────────
-
-  const rsvpLink = `${window.location.origin}/rsvp/${id}`;
+  const rsvpLink = `${window.location.origin}/dashboard/rsvp/${id}`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(rsvpLink);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
-
-  // ── Filtros ───────────────────────────────────────────────────────────────
 
   const filtered = guests.filter(g => {
     const matchSearch = g.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -203,7 +184,6 @@ export default function AdminGuests() {
   return (
     <div style={{ padding: '32px 40px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
-      {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button onClick={() => navigate(`/admin/eventos/${id}`)}
@@ -215,19 +195,22 @@ export default function AdminGuests() {
             <p style={{ fontSize: '13px', opacity: 0.5 }}>Gerencie a lista e acompanhe as confirmações</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Link RSVP */}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {codigoEvento && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(184,150,90,0.06)', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '8px' }}>
+              <span style={{ fontSize: '11px', opacity: 0.5, letterSpacing: '0.05em' }}>CÓDIGO:</span>
+              <span style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '0.15em', color: '#B8965A', fontFamily: 'monospace' }}>{codigoEvento}</span>
+            </div>
+          )}
           <button onClick={copyLink}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: linkCopied ? 'rgba(34,197,94,0.1)' : 'rgba(184,150,90,0.1)', color: linkCopied ? '#16a34a' : '#B8965A', border: `1px solid ${linkCopied ? 'rgba(34,197,94,0.3)' : 'rgba(184,150,90,0.3)'}`, borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' }}>
             {linkCopied ? <><Check size={14} /> Link copiado!</> : <><Copy size={14} /> Copiar link RSVP</>}
           </button>
-          {/* Importar CSV */}
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(184,150,90,0.08)', border: '1px solid rgba(184,150,90,0.25)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#230606', opacity: 0.7, fontWeight: 500 }}>
             <Upload size={14} />
             {uploading ? 'Importando...' : 'Importar CSV'}
             <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportExcel} />
           </label>
-          {/* Adicionar */}
           <button onClick={() => setShowAddModal(true)}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
             <UserPlus size={14} /> Adicionar convidado
@@ -235,7 +218,6 @@ export default function AdminGuests() {
         </div>
       </div>
 
-      {/* MÉTRICAS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {[
           { label: 'Total (+ acomp.)', value: totalWithCompanions, icon: Users, color: '#230606' },
@@ -257,7 +239,6 @@ export default function AdminGuests() {
         })}
       </div>
 
-      {/* BUSCA E FILTROS */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#FDFAF6', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '8px', padding: '8px 14px', flex: 1, minWidth: '200px' }}>
           <Search size={14} style={{ color: '#230606', opacity: 0.4 }} />
@@ -274,7 +255,6 @@ export default function AdminGuests() {
         </div>
       </div>
 
-      {/* LISTA */}
       <div style={{ ...card, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(184,150,90,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: '#5C1A2E', fontWeight: 400 }}>Lista de Convidados</h2>
@@ -290,20 +270,14 @@ export default function AdminGuests() {
           const cfg = statusConfig[guest.status];
           const Icon = cfg.icon;
           const initials = guest.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-
           return (
-            <div key={guest.id}
-              onClick={() => setShowGuestDetail(guest)}
+            <div key={guest.id} onClick={() => setShowGuestDetail(guest)}
               style={{ padding: '14px 20px', borderBottom: i < filtered.length - 1 ? '1px solid rgba(184,150,90,0.08)' : 'none', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'background 0.15s' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(184,150,90,0.04)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              {/* Avatar */}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
               <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(184,150,90,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <span style={{ fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{initials}</span>
               </div>
-
-              {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: '14px', color: '#230606', marginBottom: '2px' }}>{guest.name}</p>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -312,13 +286,9 @@ export default function AdminGuests() {
                   {guest.companions > 0 && <p style={{ fontSize: '12px', opacity: 0.5 }}>+{guest.companions} acomp.</p>}
                 </div>
               </div>
-
-              {/* Status */}
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: cfg.bg, color: cfg.color, flexShrink: 0 }}>
                 <Icon size={11} /> {cfg.label}
               </span>
-
-              {/* Ações rápidas */}
               {guest.status !== 'confirmed' && (
                 <button onClick={e => { e.stopPropagation(); updateStatus(guest.id, 'confirmed'); }}
                   style={{ padding: '5px 10px', background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', flexShrink: 0 }}>
@@ -330,7 +300,6 @@ export default function AdminGuests() {
         })}
       </div>
 
-      {/* MODAL: Adicionar convidado */}
       {showAddModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(35,6,6,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '24px' }}>
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
@@ -357,7 +326,6 @@ export default function AdminGuests() {
         </div>
       )}
 
-      {/* MODAL: Detalhe do convidado */}
       {showGuestDetail && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(35,6,6,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '24px' }}>
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
@@ -371,72 +339,26 @@ export default function AdminGuests() {
               </div>
               <button onClick={() => setShowGuestDetail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4 }}><X size={18} /></button>
             </div>
-
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {showGuestDetail.contact && (
-                  <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Contato</p><p style={{ fontSize: '13px' }}>{showGuestDetail.contact}</p></div>
-                )}
-                {showGuestDetail.date_of_birth && (
-                  <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Nascimento</p><p style={{ fontSize: '13px' }}>{new Date(showGuestDetail.date_of_birth).toLocaleDateString('pt-BR')}</p></div>
-                )}
-                {showGuestDetail.companions > 0 && (
-                  <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Acompanhantes</p><p style={{ fontSize: '13px' }}>{showGuestDetail.companions}</p></div>
-                )}
-                {showGuestDetail.confirmed_at && (
-                  <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Confirmado em</p><p style={{ fontSize: '13px' }}>{new Date(showGuestDetail.confirmed_at).toLocaleDateString('pt-BR')}</p></div>
-                )}
+                {showGuestDetail.contact && <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Contato</p><p style={{ fontSize: '13px' }}>{showGuestDetail.contact}</p></div>}
+                {showGuestDetail.date_of_birth && <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Nascimento</p><p style={{ fontSize: '13px' }}>{new Date(showGuestDetail.date_of_birth).toLocaleDateString('pt-BR')}</p></div>}
+                {showGuestDetail.companions > 0 && <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Acompanhantes</p><p style={{ fontSize: '13px' }}>{showGuestDetail.companions}</p></div>}
+                {showGuestDetail.confirmed_at && <div><p style={{ ...labelStyle, marginBottom: '2px' }}>Confirmado em</p><p style={{ fontSize: '13px' }}>{new Date(showGuestDetail.confirmed_at).toLocaleDateString('pt-BR')}</p></div>}
               </div>
-
-              {showGuestDetail.dietary && (
-                <div style={{ padding: '12px 14px', background: 'rgba(184,150,90,0.06)', borderRadius: '8px' }}>
-                  <p style={{ ...labelStyle, marginBottom: '4px' }}>Restrição alimentar</p>
-                  <p style={{ fontSize: '13px' }}>{showGuestDetail.dietary}</p>
-                </div>
-              )}
-              {showGuestDetail.special_needs && (
-                <div style={{ padding: '12px 14px', background: 'rgba(184,150,90,0.06)', borderRadius: '8px' }}>
-                  <p style={{ ...labelStyle, marginBottom: '4px' }}>Necessidade especial</p>
-                  <p style={{ fontSize: '13px' }}>{showGuestDetail.special_needs}</p>
-                </div>
-              )}
-              {showGuestDetail.message && (
-                <div style={{ padding: '12px 14px', background: 'rgba(184,150,90,0.06)', borderRadius: '8px' }}>
-                  <p style={{ ...labelStyle, marginBottom: '4px' }}>Mensagem</p>
-                  <p style={{ fontSize: '13px', fontStyle: 'italic' }}>"{showGuestDetail.message}"</p>
-                </div>
-              )}
-
-              {/* Ações de status */}
+              {showGuestDetail.dietary && <div style={{ padding: '12px 14px', background: 'rgba(184,150,90,0.06)', borderRadius: '8px' }}><p style={{ ...labelStyle, marginBottom: '4px' }}>Restrição alimentar</p><p style={{ fontSize: '13px' }}>{showGuestDetail.dietary}</p></div>}
+              {showGuestDetail.special_needs && <div style={{ padding: '12px 14px', background: 'rgba(184,150,90,0.06)', borderRadius: '8px' }}><p style={{ ...labelStyle, marginBottom: '4px' }}>Necessidade especial</p><p style={{ fontSize: '13px' }}>{showGuestDetail.special_needs}</p></div>}
+              {showGuestDetail.message && <div style={{ padding: '12px 14px', background: 'rgba(184,150,90,0.06)', borderRadius: '8px' }}><p style={{ ...labelStyle, marginBottom: '4px' }}>Mensagem</p><p style={{ fontSize: '13px', fontStyle: 'italic' }}>"{showGuestDetail.message}"</p></div>}
               <div style={{ display: 'flex', gap: '8px', paddingTop: '8px', borderTop: '1px solid rgba(184,150,90,0.15)' }}>
-                {showGuestDetail.status !== 'confirmed' && (
-                  <button onClick={() => updateStatus(showGuestDetail.id, 'confirmed')}
-                    style={{ flex: 1, padding: '9px', background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
-                    Confirmar
-                  </button>
-                )}
-                {showGuestDetail.status !== 'declined' && (
-                  <button onClick={() => updateStatus(showGuestDetail.id, 'declined')}
-                    style={{ flex: 1, padding: '9px', background: 'rgba(239,68,68,0.08)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
-                    Recusar
-                  </button>
-                )}
-                {showGuestDetail.status !== 'pending' && (
-                  <button onClick={() => updateStatus(showGuestDetail.id, 'pending')}
-                    style={{ flex: 1, padding: '9px', background: 'rgba(184,150,90,0.08)', color: '#B8965A', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
-                    Pendente
-                  </button>
-                )}
-                <button onClick={() => deleteGuest(showGuestDetail.id)}
-                  style={{ padding: '9px 14px', background: 'none', color: '#dc2626', border: 'none', borderRadius: '8px', cursor: 'pointer', opacity: 0.5 }}>
-                  <Trash2 size={15} />
-                </button>
+                {showGuestDetail.status !== 'confirmed' && <button onClick={() => updateStatus(showGuestDetail.id, 'confirmed')} style={{ flex: 1, padding: '9px', background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>Confirmar</button>}
+                {showGuestDetail.status !== 'declined' && <button onClick={() => updateStatus(showGuestDetail.id, 'declined')} style={{ flex: 1, padding: '9px', background: 'rgba(239,68,68,0.08)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>Recusar</button>}
+                {showGuestDetail.status !== 'pending' && <button onClick={() => updateStatus(showGuestDetail.id, 'pending')} style={{ flex: 1, padding: '9px', background: 'rgba(184,150,90,0.08)', color: '#B8965A', border: '1px solid rgba(184,150,90,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>Pendente</button>}
+                <button onClick={() => deleteGuest(showGuestDetail.id)} style={{ padding: '9px 14px', background: 'none', color: '#dc2626', border: 'none', borderRadius: '8px', cursor: 'pointer', opacity: 0.5 }}><Trash2 size={15} /></button>
               </div>
             </div>
           </motion.div>
         </div>
       )}
-
     </div>
   );
 }

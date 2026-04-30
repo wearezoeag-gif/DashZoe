@@ -7,6 +7,7 @@ import {
   AlertCircle, DollarSign, Users, Camera, X, ChevronLeft, ChevronRight, Copy, Check
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 type Evento = {
   id: string; nome: string; cliente_nome: string; cliente_email: string;
@@ -14,13 +15,6 @@ type Evento = {
   orcamento?: number; budget?: number; status?: string; tipo?: string;
   tipo_evento_comercial?: string;
   receita_studio?: number;
-  etapa_planejamento?: boolean;
-  etapa_moodboard?: boolean;
-  etapa_orcamento?: boolean;
-  etapa_contrato?: boolean;
-  etapa_pagamento?: boolean;
-  etapa_execucao?: boolean;
-  etapa_pos_evento?: boolean;
   etapa_planejamento?: boolean;
   etapa_moodboard?: boolean;
   etapa_orcamento?: boolean;
@@ -118,6 +112,7 @@ const statusConfig = {
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function AdminEventDetail() {
+  const isMobile = useIsMobile();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -318,13 +313,6 @@ export default function AdminEventDetail() {
       orcamento: form.orcamento, budget: form.budget, status: form.status, tipo: form.tipo,
       tipo_evento_comercial: form.tipo_evento_comercial,
       receita_studio: form.receita_studio,
-      etapa_planejamento: form.etapa_planejamento || false,
-      etapa_moodboard: form.etapa_moodboard || false,
-      etapa_orcamento: form.etapa_orcamento || false,
-      etapa_contrato: form.etapa_contrato || false,
-      etapa_pagamento: form.etapa_pagamento || false,
-      etapa_execucao: form.etapa_execucao || false,
-      etapa_pos_evento: form.etapa_pos_evento || false,
       etapa_planejamento: form.etapa_planejamento || false,
       etapa_moodboard: form.etapa_moodboard || false,
       etapa_orcamento: form.etapa_orcamento || false,
@@ -547,7 +535,7 @@ export default function AdminEventDetail() {
   );
 
   return (
-    <div style={{ padding: '32px 40px', background: '#F5EFE6', minHeight: '100vh' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px 40px', background: '#F5EFE6', minHeight: '100vh' }}>
 
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
@@ -587,18 +575,18 @@ export default function AdminEventDetail() {
 
         {/* ── ABA: INFORMAÇÕES ── */}
         {tab === 'info' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={card}>
                 <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', color: '#5C1A2E', fontWeight: 400, marginBottom: '20px' }}>Dados do Evento</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div><label style={labelStyle}>Nome do Evento</label><input style={inputStyle} value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
                   <div><label style={labelStyle}>Tipo</label><input style={inputStyle} value={form.tipo || ''} onChange={e => setForm({ ...form, tipo: e.target.value })} placeholder="Ex: Casamento, Aniversário" /></div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                     <div><label style={labelStyle}>Data</label><input type="date" style={inputStyle} value={form.data || ''} onChange={e => setForm({ ...form, data: e.target.value })} /></div>
                     <div><label style={labelStyle}>Convidados</label><input type="number" style={inputStyle} value={form.convidados || ''} onChange={e => setForm({ ...form, convidados: Number(e.target.value) })} /></div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
                     <div><label style={labelStyle}>Local</label><input style={inputStyle} value={form.local || ''} onChange={e => setForm({ ...form, local: e.target.value })} /></div>
                     <div><label style={labelStyle}>Cidade</label><input style={inputStyle} value={form.cidade || ''} onChange={e => setForm({ ...form, cidade: e.target.value })} /></div>
                   </div>
@@ -695,7 +683,7 @@ export default function AdminEventDetail() {
                   {/* Etapas do evento */}
                   <div>
                     <label style={labelStyle}>Etapas do Evento</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginTop: '4px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '8px', marginTop: '4px' }}>
                       {([
                         { key: 'etapa_planejamento', label: '1. Planejamento' },
                         { key: 'etapa_moodboard',    label: '2. Moodboard' },
@@ -778,7 +766,7 @@ export default function AdminEventDetail() {
                 <p style={{ fontSize: '13px', opacity: 0.4 }}>Adicione as fotos do evento para disponibilizar na galeria</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '8px' }}>
                 {eventPhotos.map((photo, index) => {
                   const isSelected = selectedIds.has(photo.id);
                   return (
@@ -843,7 +831,7 @@ export default function AdminEventDetail() {
         {/* ── ABA: FINANCEIRO ── */}
         {tab === 'financeiro' && (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
               {[
                 { label: 'Budget', value: form.budget ? fmt(Number(form.budget)) : '—', editable: true },
                 { label: 'Total Planilha', value: fmt(totalEvento) },
@@ -992,7 +980,7 @@ export default function AdminEventDetail() {
                       <div><label style={labelStyle}>Qtd</label><input type="number" style={inputSmall} value={newItem.quantity} onChange={e => setNewItem({ ...newItem, quantity: e.target.value })} /></div>
                       <div><label style={labelStyle}>Valor Unit. (R$)</label><input type="number" style={inputSmall} placeholder="0" value={newItem.unit_price} onChange={e => setNewItem({ ...newItem, unit_price: e.target.value })} /></div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                       <div>
                         <label style={labelStyle}>Forma de pagamento</label>
                         <select style={inputSmall} value={newItem.pagamento_tipo} onChange={e => setNewItem({ ...newItem, pagamento_tipo: e.target.value })}>
@@ -1037,7 +1025,7 @@ export default function AdminEventDetail() {
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {setoresAuto.length === 0 ? (
-                    <div style={{ ...card, padding: '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Adicione itens na planilha para gerar os setores</div>
+                    <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Adicione itens na planilha para gerar os setores</div>
                   ) : setoresAuto.map(setor => {
                     const pct = setor.total > 0 ? Math.round((setor.pago / setor.total) * 100) : 0;
                     const isExp = expandedSetorAuto === setor.nome;
@@ -1113,9 +1101,16 @@ export default function AdminEventDetail() {
                         <p style={{ fontSize: '11px', opacity: 0.5 }}>{extra.quantity}x · {fmt(extra.unit_price)} cada</p>
                       </div>
                       <p style={{ fontSize: '14px', fontFamily: 'Playfair Display, serif' }}>{fmt(extra.total)}</p>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: extra.approved ? 'rgba(34,197,94,0.1)' : 'rgba(184,150,90,0.1)', color: extra.approved ? '#16a34a' : '#B8965A' }}>
-                        {extra.approved ? <><CheckCircle2 size={11} /> Aprovado pelo cliente</> : <><Clock size={11} /> Aguardando cliente</>}
-                      </span>
+                      {extra.approved ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
+                          <CheckCircle2 size={11} /> Aprovado pelo cliente
+                        </span>
+                      ) : (
+                        <button onClick={() => toggleExtraApproved(extra.id, true)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>
+                          <CheckCircle2 size={11} /> Aprovar como cliente
+                        </button>
+                      )}
                       <button onClick={() => deleteExtra(extra.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: '#dc2626' }}><Trash2 size={13} /></button>
                     </div>
                   ))}
@@ -1149,7 +1144,7 @@ export default function AdminEventDetail() {
                     <input type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleUploadReceipt} />
                   </label>
                 </div>
-                {receipts.length === 0 && <div style={{ ...card, padding: '32px', textAlign: 'center' }}><FileText size={36} style={{ margin: '0 auto 10px', opacity: 0.2 }} /><p style={{ fontSize: '13px', opacity: 0.4 }}>Nenhum comprovante ainda</p></div>}
+                {receipts.length === 0 && <div style={{ ...card, padding: isMobile ? '16px' : '32px', textAlign: 'center' }}><FileText size={36} style={{ margin: '0 auto 10px', opacity: 0.2 }} /><p style={{ fontSize: '13px', opacity: 0.4 }}>Nenhum comprovante ainda</p></div>}
                 {receipts.map(receipt => (
                   <div key={receipt.id} style={{ ...card, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                     <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(184,150,90,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1182,7 +1177,7 @@ export default function AdminEventDetail() {
               <p style={{ fontSize: '11px', opacity: 0.4, marginTop: '8px' }}>Estes arquivos ficam visíveis para o cliente na tela de Arquivos</p>
             </div>
             {arquivos.length === 0 ? (
-              <div style={{ ...card, padding: '40px', textAlign: 'center' }}>
+              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center' }}>
                 <FileText size={40} style={{ margin: '0 auto 12px', color: '#230606', opacity: 0.2 }} />
                 <p style={{ fontSize: '13px', color: '#230606', opacity: 0.5 }}>Nenhum arquivo adicionado ainda</p>
               </div>
@@ -1223,7 +1218,7 @@ export default function AdminEventDetail() {
               </label>
             </div>
             {contracts.length === 0 ? (
-              <div style={{ ...card, padding: '40px', textAlign: 'center' }}>
+              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center' }}>
                 <FileText size={40} style={{ margin: '0 auto 12px', color: '#230606', opacity: 0.2 }} />
                 <p style={{ fontSize: '13px', color: '#230606', opacity: 0.5 }}>Nenhum contrato adicionado ainda</p>
               </div>
@@ -1260,13 +1255,13 @@ export default function AdminEventDetail() {
               </label>
             </div>
             {images.length === 0 ? (
-              <div style={{ ...card, padding: '40px', textAlign: 'center' }}>
+              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center' }}>
                 <p style={{ fontSize: '13px', opacity: 0.5 }}>Nenhuma imagem no moodboard ainda</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: '3px' }}>
                 {images.map(img => (
-                  <div key={img.id} style={{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '1', position: 'relative' }}>
+                  <div key={img.id} style={{ borderRadius: '0', overflow: 'hidden', aspectRatio: '1', position: 'relative' }}>
                     <img src={img.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     {img.status && (
                       <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '3px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 500, background: img.status === 'approved' ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)', color: '#fff' }}>
