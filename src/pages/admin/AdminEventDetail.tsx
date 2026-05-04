@@ -535,7 +535,7 @@ export default function AdminEventDetail() {
   );
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '32px 40px', background: '#F5EFE6', minHeight: '100vh' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px 40px', background: '#F5EFE6', minHeight: '100vh', color: '#230606' }}>
 
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>

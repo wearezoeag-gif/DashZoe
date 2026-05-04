@@ -102,7 +102,6 @@ export default function ClientFinancial() {
     e.target.value = '';
   };
 
-  // Todos os itens incluindo extras aprovados
   const todosItens: Item[] = [
     ...items,
     ...extras.map(e => ({ id: e.id, description: `[Extra] ${e.description}`, quantity: e.quantity, unit_price: e.unit_price, total: e.total, pagamento_tipo: 'avista' as const, parcelas_total: 1, parcelas_pagas: 0, setor_nome: 'Extras Aprovados' }))
@@ -113,7 +112,6 @@ export default function ClientFinancial() {
   const emAberto = totalPlanilha - totalPago;
   const margem = budget ? budget - totalPlanilha : null;
 
-  // Agrupar por setor
   const setoresMap: Record<string, { nome: string; items: Item[]; total: number; pago: number }> = {};
   todosItens.forEach(item => {
     const nome = item.setor_nome || 'Sem setor';
@@ -135,10 +133,9 @@ export default function ClientFinancial() {
 
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '28px', color: '#5C1A2E', fontWeight: 400, marginBottom: '4px' }}>Financeiro</h1>
-        <p style={{ fontSize: '13px', opacity: 0.5 }}>Acompanhe os pagamentos do seu evento</p>
+        <p style={{ fontSize: '13px', color: '#230606', opacity: 0.5 }}>Acompanhe os pagamentos do seu evento</p>
       </div>
 
-      {/* 5 CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
         {[
           { label: 'Budget', value: budget ? fmt(budget) : '—', color: '#230606' },
@@ -149,13 +146,12 @@ export default function ClientFinancial() {
         ].map((c, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
             style={{ ...card, padding: '16px' }}>
-            <p style={{ fontSize: '10px', opacity: 0.45, marginBottom: '8px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{c.label}</p>
+            <p style={{ fontSize: '10px', color: '#230606', opacity: 0.5, marginBottom: '8px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{c.label}</p>
             <p style={{ fontSize: '18px', fontFamily: 'Playfair Display, serif', fontWeight: 400, color: c.color }}>{c.value}</p>
           </motion.div>
         ))}
       </div>
 
-      {/* TABS */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: 'rgba(184,150,90,0.08)', borderRadius: '24px', padding: '4px', width: 'fit-content' }}>
         {(['planilha', 'setores', 'extras', 'comprovantes'] as const).map(t => (
           <button key={t} style={tabStyle(tab === t)} onClick={() => setTab(t)}>
@@ -166,7 +162,6 @@ export default function ClientFinancial() {
 
       <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
 
-        {/* PLANILHA */}
         {tab === 'planilha' && (
           <div style={{ ...card, overflow: 'hidden' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(184,150,90,0.15)', display: 'flex', justifyContent: 'space-between' }}>
@@ -174,13 +169,13 @@ export default function ClientFinancial() {
               <p style={{ fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(totalPlanilha)}</p>
             </div>
             {todosItens.length === 0 ? (
-              <div style={{ padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum item ainda</div>
+              <div style={{ padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', color: '#230606', opacity: 0.4 }}>Nenhum item ainda</div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(184,150,90,0.1)' }}>
                     {['Descrição', 'Setor', 'Qtd', 'Valor Unit.', 'Total', 'Pagamento', 'Ação'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', opacity: 0.4, fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{h}</th>
+                      <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: '11px', color: '#230606', opacity: 0.5, fontWeight: 400, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -191,15 +186,15 @@ export default function ClientFinancial() {
                     const pct = Math.round((item.parcelas_pagas / item.parcelas_total) * 100);
                     return (
                       <tr key={item.id} style={{ borderBottom: '1px solid rgba(184,150,90,0.07)' }}>
-                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>{item.description}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '12px', opacity: 0.5 }}>{item.setor_nome}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>{item.quantity}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>{fmt(item.unit_price)}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#230606' }}>{item.description}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '12px', color: '#230606', opacity: 0.5 }}>{item.setor_nome}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#230606' }}>{item.quantity}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#230606' }}>{fmt(item.unit_price)}</td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(item.total)}</td>
                         <td style={{ padding: '12px 16px' }}>
                           {item.pagamento_tipo === 'parcelado' ? (
                             <div>
-                              <p style={{ fontSize: '12px' }}>{item.parcelas_pagas}/{item.parcelas_total}x · {fmt(valorParcela)}</p>
+                              <p style={{ fontSize: '12px', color: '#230606' }}>{item.parcelas_pagas}/{item.parcelas_total}x · {fmt(valorParcela)}</p>
                               <div style={{ height: '3px', background: 'rgba(184,150,90,0.15)', borderRadius: '99px', width: '80px', marginTop: '4px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${pct}%`, background: isPago ? '#16a34a' : '#B8965A', borderRadius: '99px' }} />
                               </div>
@@ -217,7 +212,7 @@ export default function ClientFinancial() {
                             </span>
                           ) : (
                             <button onClick={() => pagarParcela(item)} disabled={pagandoItem === item.id}
-                              style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>
+                              style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', background: '#B8965A', color: '#230606', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500, opacity: pagandoItem === item.id ? 0.6 : 1 }}>
                               <CreditCard size={12} />
                               {item.pagamento_tipo === 'parcelado' ? `Pagar ${item.parcelas_pagas + 1}/${item.parcelas_total}` : 'Pagar'}
                             </button>
@@ -232,11 +227,10 @@ export default function ClientFinancial() {
           </div>
         )}
 
-        {/* SETORES */}
         {tab === 'setores' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {setores.length === 0 ? (
-              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum setor ainda</div>
+              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', color: '#230606', opacity: 0.4 }}>Nenhum setor ainda</div>
             ) : setores.map(setor => {
               const pct = setor.total > 0 ? Math.round((setor.pago / setor.total) * 100) : 0;
               const isExpanded = expandedSetor === setor.nome;
@@ -247,18 +241,18 @@ export default function ClientFinancial() {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                         <h3 style={{ fontSize: '15px', color: '#230606', fontWeight: 400 }}>{setor.nome}</h3>
-                        <span style={{ fontSize: '11px', opacity: 0.4 }}>{setor.items.length} item{setor.items.length !== 1 ? 's' : ''}</span>
+                        <span style={{ fontSize: '11px', color: '#230606', opacity: 0.4 }}>{setor.items.length} item{setor.items.length !== 1 ? 's' : ''}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ height: '4px', background: 'rgba(184,150,90,0.15)', borderRadius: '99px', width: '120px', overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#16a34a' : '#B8965A', borderRadius: '99px' }} />
                         </div>
-                        <span style={{ fontSize: '11px', opacity: 0.5 }}>{pct}%</span>
+                        <span style={{ fontSize: '11px', color: '#230606', opacity: 0.5 }}>{pct}%</span>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '16px', fontFamily: 'Playfair Display, serif' }}>{fmt(setor.total)}</p>
-                      <p style={{ fontSize: '11px', opacity: 0.5 }}>{fmt(setor.pago)} pago</p>
+                      <p style={{ fontSize: '16px', fontFamily: 'Playfair Display, serif', color: '#230606' }}>{fmt(setor.total)}</p>
+                      <p style={{ fontSize: '11px', color: '#230606', opacity: 0.5 }}>{fmt(setor.pago)} pago</p>
                     </div>
                     {isExpanded ? <ChevronUp size={15} style={{ opacity: 0.4 }} /> : <ChevronDown size={15} style={{ opacity: 0.4 }} />}
                   </div>
@@ -270,9 +264,9 @@ export default function ClientFinancial() {
                         return (
                           <div key={item.id} style={{ padding: '12px 20px', borderBottom: i < setor.items.length - 1 ? '1px solid rgba(184,150,90,0.06)' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '13px' }}>{item.description}</p>
+                              <p style={{ fontSize: '13px', color: '#230606' }}>{item.description}</p>
                               {item.pagamento_tipo === 'parcelado' && (
-                                <p style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>{item.parcelas_pagas}/{item.parcelas_total} parcelas · {fmt(valorParcela)} cada</p>
+                                <p style={{ fontSize: '11px', color: '#230606', opacity: 0.5, marginTop: '2px' }}>{item.parcelas_pagas}/{item.parcelas_total} parcelas · {fmt(valorParcela)} cada</p>
                               )}
                             </div>
                             <p style={{ fontSize: '13px', color: '#B8965A' }}>{fmt(item.total)}</p>
@@ -290,7 +284,6 @@ export default function ClientFinancial() {
           </div>
         )}
 
-        {/* EXTRAS */}
         {tab === 'extras' && (
           <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(184,150,90,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -298,14 +291,14 @@ export default function ClientFinancial() {
               <p style={{ fontSize: '13px', color: '#B8965A', fontWeight: 500 }}>{fmt(extrasAll.filter((e: any) => e.approved).reduce((s: number, e: any) => s + e.total, 0))} aprovados</p>
             </div>
             {extrasAll.length === 0 ? (
-              <div style={{ padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum extra ainda</div>
+              <div style={{ padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', color: '#230606', opacity: 0.4 }}>Nenhum extra ainda</div>
             ) : extrasAll.map((extra: any) => (
               <div key={extra.id} style={{ padding: '14px 20px', borderBottom: '1px solid rgba(184,150,90,0.07)', display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '13px', color: '#230606', marginBottom: '2px' }}>{extra.description}</p>
-                  <p style={{ fontSize: '11px', opacity: 0.5 }}>{extra.quantity}x · {fmt(extra.unit_price)} cada</p>
+                  <p style={{ fontSize: '11px', color: '#230606', opacity: 0.5 }}>{extra.quantity}x · {fmt(extra.unit_price)} cada</p>
                 </div>
-                <p style={{ fontSize: '14px', fontFamily: 'Playfair Display, serif' }}>{fmt(extra.total)}</p>
+                <p style={{ fontSize: '14px', fontFamily: 'Playfair Display, serif', color: '#230606' }}>{fmt(extra.total)}</p>
                 {extra.approved ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
                     <CheckCircle2 size={11} /> Aprovado
@@ -321,11 +314,10 @@ export default function ClientFinancial() {
           </div>
         )}
 
-        {/* COMPROVANTES POR SETOR */}
         {tab === 'comprovantes' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {setores.length === 0 ? (
-              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum setor ainda</div>
+              <div style={{ ...card, padding: isMobile ? '16px' : '40px', textAlign: 'center', fontSize: '13px', color: '#230606', opacity: 0.4 }}>Nenhum setor ainda</div>
             ) : setores.map(setor => {
               const comprovantesDoSetor = comprovantesSetor.filter(c => c.setor_nome === setor.nome);
               return (
@@ -333,7 +325,7 @@ export default function ClientFinancial() {
                   <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(184,150,90,0.12)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '15px', color: '#5C1A2E', fontWeight: 400 }}>{setor.nome}</h3>
-                      <p style={{ fontSize: '11px', opacity: 0.4, marginTop: '2px' }}>{fmt(setor.total)} · {comprovantesDoSetor.length} comprovante{comprovantesDoSetor.length !== 1 ? 's' : ''}</p>
+                      <p style={{ fontSize: '11px', color: '#230606', opacity: 0.4, marginTop: '2px' }}>{fmt(setor.total)} · {comprovantesDoSetor.length} comprovante{comprovantesDoSetor.length !== 1 ? 's' : ''}</p>
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'rgba(184,150,90,0.08)', border: '1px solid rgba(184,150,90,0.25)', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', color: '#B8965A' }}>
                       <Upload size={13} />
@@ -342,15 +334,15 @@ export default function ClientFinancial() {
                     </label>
                   </div>
                   {comprovantesDoSetor.length === 0 ? (
-                    <p style={{ padding: '16px 20px', fontSize: '12px', opacity: 0.35 }}>Nenhum comprovante para este setor ainda</p>
+                    <p style={{ padding: '16px 20px', fontSize: '12px', color: '#230606', opacity: 0.35 }}>Nenhum comprovante para este setor ainda</p>
                   ) : comprovantesDoSetor.map(c => (
                     <div key={c.id} style={{ padding: '12px 20px', borderBottom: '1px solid rgba(184,150,90,0.06)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(184,150,90,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <FileText size={16} style={{ color: '#B8965A' }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{c.name}</p>
-                        <p style={{ fontSize: '11px', opacity: 0.4 }}>{new Date(c.created_at).toLocaleDateString('pt-BR')}</p>
+                        <p style={{ fontSize: '12px', color: '#230606', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</p>
+                        <p style={{ fontSize: '11px', color: '#230606', opacity: 0.4 }}>{new Date(c.created_at).toLocaleDateString('pt-BR')}</p>
                       </div>
                       <a href={c.file_url} target="_blank" rel="noreferrer"
                         style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', background: '#B8965A', color: '#230606', borderRadius: '6px', fontSize: '12px', fontWeight: 500, textDecoration: 'none' }}>
