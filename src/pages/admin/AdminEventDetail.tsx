@@ -882,8 +882,8 @@ export default function AdminEventDetail() {
                       ))}
                     </tr></thead>
                     <tbody>
-                      {items.length === 0 && <tr><td colSpan={8} style={{ padding: '28px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum item cadastrado</td></tr>}
-                      {items.map((item: any) => {
+                    {[...items, ...extras.filter(e => e.approved).map(e => ({ ...e, description: `[Extra] ${e.description}`, setor_nome: 'Extras Aprovados', pagamento_tipo: 'avista' as const, parcelas_total: 1, parcelas_pagas: 1, sector_id: null }))].length === 0 && <tr><td colSpan={8} style={{ padding: '28px', textAlign: 'center', fontSize: '13px', opacity: 0.4 }}>Nenhum item cadastrado</td></tr>}
+                    {[...items, ...extras.filter(e => e.approved).map(e => ({ ...e, description: `[Extra] ${e.description}`, setor_nome: 'Extras Aprovados', pagamento_tipo: 'avista' as const, parcelas_total: 1, parcelas_pagas: 1, sector_id: null }))].map((item: any) => {
                         const parcTotal = item.parcelas_total || 1;
                         const parcPagas = item.parcelas_pagas || 0;
                         const valorParcela = item.total / parcTotal;

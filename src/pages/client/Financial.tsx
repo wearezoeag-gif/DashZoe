@@ -64,7 +64,7 @@ export default function ClientFinancial() {
     ]);
     setItems((itemsRes.data || []).map((i: any) => ({ ...i, pagamento_tipo: i.pagamento_tipo || 'avista', parcelas_total: i.parcelas_total || 1, parcelas_pagas: i.parcelas_pagas || 0, setor_nome: (i.event_sectors as any)?.name || 'Sem setor' })));
     setExtrasAll(extrasRes.data || []);
-    setExtras((extrasRes.data || []).filter((e: any) => e.approved));
+    setExtras((extrasRes.data || []).filter((e: any) => e.approved).map((e: any) => ({ ...e, parcelas_pagas: e.parcelas_pagas || 0 })));
     setComprovantesSetor(comprovantesRes.data || []);
   };
 
@@ -72,8 +72,13 @@ export default function ClientFinancial() {
     if (item.parcelas_pagas >= item.parcelas_total) return;
     setPagandoItem(item.id);
     const novasPagas = item.parcelas_pagas + 1;
-    await supabase.from('event_items').update({ parcelas_pagas: novasPagas }).eq('id', item.id);
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, parcelas_pagas: novasPagas } : i));
+    if (item.setor_nome === 'Extras Aprovados') {
+      await supabase.from('event_extras').update({ parcelas_pagas: novasPagas }).eq('id', item.id);
+      setExtras(prev => prev.map((e: any) => e.id === item.id ? { ...e, parcelas_pagas: novasPagas } : e));
+    } else {
+      await supabase.from('event_items').update({ parcelas_pagas: novasPagas }).eq('id', item.id);
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, parcelas_pagas: novasPagas } : i));
+    }
     setPagandoItem(null);
   };
 
@@ -84,7 +89,7 @@ export default function ClientFinancial() {
       const atualizado = prev.find((e: any) => e.id === extraId);
       if (atualizado) return prev;
       const extra = extrasAll.find((e: any) => e.id === extraId);
-      return extra ? [...prev, { ...extra, approved: true }] : prev;
+      return extra ? [...prev, { ...extra, approved: true, parcelas_pagas: 0 }] : prev;
     });
   };
 
@@ -104,11 +109,11 @@ export default function ClientFinancial() {
 
   const todosItens: Item[] = [
     ...items,
-    ...extras.map(e => ({ id: e.id, description: `[Extra] ${e.description}`, quantity: e.quantity, unit_price: e.unit_price, total: e.total, pagamento_tipo: 'avista' as const, parcelas_total: 1, parcelas_pagas: 0, setor_nome: 'Extras Aprovados' }))
+    ...extras.map(e => ({ id: e.id, description: `[Extra] ${e.description}`, quantity: e.quantity, unit_price: e.unit_price, total: e.total, pagamento_tipo: 'avista' as const, parcelas_total: 1, parcelas_pagas: e.parcelas_pagas || 0, setor_nome: 'Extras Aprovados' }))
   ];
 
   const totalPlanilha = todosItens.reduce((s, i) => s + i.total, 0);
-  const totalPago = items.reduce((s, i) => s + (i.total / i.parcelas_total) * i.parcelas_pagas, 0);
+  const totalPago = todosItens.reduce((s, i) => s + (i.total / i.parcelas_total) * i.parcelas_pagas, 0);
   const emAberto = totalPlanilha - totalPago;
   const margem = budget ? budget - totalPlanilha : null;
 
